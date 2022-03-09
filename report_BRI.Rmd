@@ -1,0 +1,458 @@
+---
+title: 'Summary of simulation results from SCRAM: a simulation tool for estimating
+  collision risk'
+output:
+  pdf_document: default
+params:
+  iterations: NA
+  model_output: NA
+  threshold: NA
+  option: NA
+  species_labels: NA
+---
+<br>
+SCRAM was developed by Biodiversity Research Institute, the University of Rhode Island, and U.S. Fish and Wildlife Service with funding from the Bureau of Ocean Energy Management.
+<br>
+<br>
+
+```{r, echo=FALSE}
+option_names <- c("Basic option", "Approximated option, without a flight height distribution", "Approximated option, with a flight height distribution", "Individual-based option without a flight height distribution", "Individual-based option with a flight height distribution")
+cat(paste("The collision risk model was run for ", params$iterations, " iterations using the: \n"), option_names[as.numeric(params$option)], "\n",
+    "Please see below for summary statistics for each of the stochastic parameters.", sep="")
+```
+
+<br>
+
+The plot on the tool interface shows a histogram of the number of collisions per year for each iteration. The heights of the bars show the relative frequency of each value. The line shows the smoothed estimate of the shape of the histogram. Months for which movement data were provided or available are shown in bold; only bold months are shown in histogram of annual collisions. 
+
+<br>
+<br>
+
+```{r, fig0, fig.height = 4, fig.width = 6.5, echo=FALSE}
+
+data0 <- params$model_output[[as.numeric(params$option)]][[params$model_output[['CRSpecies']][1]]][[1]]
+month_lab <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+data1 <- mat.or.vec(3, 12)
+for(i in 1:12){
+  data1[1,i] <- quantile(data0[,i], c(0.025), na.rm=TRUE)
+  data1[3,i] <- quantile(data0[,i], c(0.975), na.rm=TRUE)
+  data1[2, i] <- mean(data0[,i], na.rm=TRUE)
+}
+
+width <- 0.1
+circ = c(0.69,0.73,0.79,0.88,0.96,1,0.98,0.92,0.85,0.8,0.75,0.7,0.64,0.58,0.52,0.47,0.41,0.37,0.3,0.24,0)
+
+if(sum(data1[2,], na.rm=TRUE) < 50&sum(data1[2,], na.rm=TRUE) > 12){
+  ymin=0
+  ymax=5
+}
+if(sum(data1[2,], na.rm=TRUE) <= 12){
+  ymin=0
+  ymax=2
+}
+if(sum(data1[2,], na.rm=TRUE)>50){
+  ymin <- min(data1, na.rm=TRUE)
+  ymax <- max(data1, na.rm=TRUE)
+}
+pad <- (ymax-ymin)*0.1
+steps <- round(((ymax + pad) - (ymin - pad))/4)
+
+if(length(which(params$species_labels[,1] == params$model_output[['CRSpecies']][1]))>0){
+  main_label <- paste(
+    params$species_labels[params$species_labels[,1] == params$model_output[['CRSpecies']][1], 2], 
+    " (turbine model ", params$model_output[['Turbines']][1], ")", sep=""
+  )
+}else{
+  main_label <- paste(params$model_output[['CRSpecies']][1], 
+                      " (turbine model ", params$model_output[['Turbines']][1], ")", sep="")
+}
+
+par(mar=c(3, 4.5, 2, 1))
+plot(1, 1, col=rgb(0, 0, 0, 0), ylim=c((ymin - pad - 0.2), ymax + pad), xlim=c(0.5, 12.5), 
+     xlab=" ", ylab=" ", xaxt="n", bty="n", yaxt="n", yaxs="i", main = main_label)
+
+back_poly <- rbind(c(-1, ymax+5*pad + 10), c(14, ymax+5*pad + 10), 
+                   c(14, round(ymin - pad)), c(-1, round(ymin - pad)))
+polygon(back_poly, col=rgb(68/255, 119/255, 170/255, 0.15), border=NA)
+
+for(t in 1:12){
+  if(!is.na(data1[1 ,t])){
+    range_upper <- max(data1[ ,t], na.rm=TRUE) - data1[2 ,t]
+    range_lower <- data1[2 ,t] - min(data1[ ,t], na.rm=TRUE)
+    inc_upper <- range_upper/21
+    inc_lower <- range_lower/21
+    blade_upper_l <- mat.or.vec(21, 2)
+    blade_upper_r <- mat.or.vec(21, 2)
+    blade_lower_l <- mat.or.vec(21, 2)
+    blade_lower_r <- mat.or.vec(21, 2)
+    for(i in 1:21){
+      blade_upper_l[i, 2] <- data1[2 ,t] + inc_upper*(i-1)
+      blade_upper_l[i, 1] <- t - width *circ[i]
+      blade_upper_r[i, 2] <- data1[2 ,t] + inc_upper*(i-1)
+      blade_upper_r[i, 1] <- t + width *circ[i]
+      
+      blade_lower_l[i, 2] <- data1[2 ,t] - inc_lower*(i-1)
+      blade_lower_l[i, 1] <- t - width *circ[i]
+      blade_lower_r[i, 2] <- data1[2 ,t] - inc_lower*(i-1)
+      blade_lower_r[i, 1] <- t + width *circ[i]
+    }
+    
+    blade_poly <- rbind(blade_upper_l, 
+                        cbind(rev(blade_upper_r[,1]), rev(blade_upper_r[,2])), blade_lower_r, 
+                        cbind(rev(blade_lower_l[,1]), rev(blade_lower_l[,2])))
+    post_poly <- rbind(c(t - 0.08, data1[2 ,t]), c(t - 0.08, round(ymin-pad)), 
+                       c(t + 0.08, round(ymin-pad)), c(t + 0.08, data1[2, t]))
+    
+    polygon(post_poly, col=rgb(1, 1, 1, 1), border="black", lwd=0.25)
+    polygon(blade_poly, col="white")
+    points(t, data1[2 ,t] , pch=21, bg="white", cex=1.25)
+    #text(t, round(ymin - 2*pad), month_lab[t], srt=90)
+  }
+}
+
+if(sum(data1[2,], na.rm=TRUE) < 50&sum(data1[2,], na.rm=TRUE) > 12){
+  text(1:12, rep(-1, 12), month_lab, srt=90)
+  axis(side=2, at=c(0, 1, 2, 3, 4, 5))
+}
+if(sum(data1[2,], na.rm=TRUE) <= 12){
+  text(1:12, rep(-0.2, 12), month_lab, srt=90)
+  axis(side=2, at=c(0, 1, 2))
+}
+if(sum(data1[2 ,], na.rm=TRUE) > 50){
+  axis(side=2, at = round(c(max(ymin - pad, 0), (ymin - pad +(1*steps)), (ymin - pad +(2*steps)), (ymin - pad +(3*steps)), (ymax + pad))))
+  text(1:12, rep(round(ymin - 2*pad), 12), month_lab, srt=90)
+}
+
+abline(h=round(ymin - pad), col=rgb(68/255, 119/255, 170/255, 1))
+mtext(side = 2, line=2.5, "Number of collisions/month")
+
+```
+
+The number of collisions per month. The mean for each month is shown by the center of the hub and the vertical blades show the range that contains 95% of the iterations. Results are not shown for months that do not have movement data. 
+
+<br>
+<br>
+
+```{r, fig1, fig.height = 9, fig.width = 7, echo=FALSE}
+par(mar=c(4, 1, 2, 1))
+num_species <- length(params$model_output[['CRSpecies']])
+num_turb_mods <- length(params$model_output[['Turbines']])
+for(q in 1:num_species){
+  for(i in 1:num_turb_mods){
+    data1 <- params$model_output[[as.numeric(params$option)]][[params$model_output[['CRSpecies']][q]]][[i]][1:100, ]
+    NA_index <- which(is.na(data1[1,]))
+    data1[is.na(data1)] <- -10
+    data1[data1==-10] <- mean(data1[data1!=-10])
+    month_lab <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+    if(sum(data1[2,], na.rm=TRUE) < 100&sum(data1[2,], na.rm=TRUE) > 15){
+      xmin=0
+      xmax=10
+      pad <- round((xmax-xmin)*.2)
+    }
+    if(sum(data1[2,], na.rm=TRUE) >= 100){
+      xmin <- min(data1, na.rm=TRUE)
+      xmax <- max(data1, na.rm=TRUE)
+      pad <- round((xmax-xmin)*.2)
+    }
+    if(sum(data1[2,], na.rm=TRUE) <= 15){
+      xmin=0
+      xmax=2
+      pad <- round((xmax-xmin)*.2)
+    }
+    steps <- round(((xmax + pad) - (xmin - pad))/4)
+    
+    if(length(which(params$species_labels[,q] == params$model_output[['CRSpecies']][q]))>0){
+      main_label <- paste(params$species_labels[params$species_labels[,1] == params$model_output[['CRSpecies']][q], 2], " (turbine model ", params$model_output[['Turbines']][i], ")", sep="")
+    }else{
+      main_label <- paste(params$model_output[['CRSpecies']][q],  " (turbine model ", params$model_output[['Turbines']][i], " MW)", sep="")
+    }
+    
+    plot(1, 1, col = rgb(0, 0, 0, 0), ylim = c(-12.5, -0.5), 
+         xlim = round(c((xmin - ((xmax-xmin)*.3)), (xmax + ((xmax-xmin)*.4)))), bty = "n", xlab = " ", ylab = " ", 
+         yaxt = "n", xaxt = "n", main = main_label)
+    for(e in 1:12){
+      data_perc <- ecdf(data1[,e])
+      data_perc <- data_perc(data1[,e])
+      data_perc[data_perc > 0.5] <- 0.5 + (0.5 - data_perc[data_perc > 0.5])
+      data_perc <- sqrt(data_perc*0.25)
+      data_offset <- runif(length(data_perc), -data_perc, data_perc) + -e
+      colors <- rep(rgb(68/255, 119/255, 170/255), length(data1[,e]))
+      colors[data1[,e] > (params$threshold/12)] <- rgb(238/255, 102/255, 119/255)
+      text((xmin-((xmax-xmin)*.3)), -e, month_lab[e], pos=4)
+      if(length(which(NA_index==e))<1){
+        points(data1[,e], data_offset, pch = 21, bg = colors, col = "white", lwd=0.7)
+        if(mean(data1[,e], na.rm=TRUE)<2){
+          text(xmax+((xmax-xmin)*.4), -e, paste(round(mean(data1[,e], na.rm=TRUE), 1), " (", round(quantile(data1[,e], c(.025), na.rm=TRUE), 1), ", ", round(quantile(data1[,e], c(.975), na.rm=TRUE), 1), ")", sep = ""), pos=2)
+        }else{
+          text(xmax+((xmax-xmin)*.4), -e, paste(round(mean(data1[,e], na.rm=TRUE), 2), " (", round(quantile(data1[,e], c(.025), na.rm=TRUE), 2), ", ", round(quantile(data1[,e], c(.975), na.rm=TRUE), 2), ")", sep = ""), pos=2)
+        }
+        #points(data1[,e], data_offset, pch = 21, bg = colors, col = "white", lwd=0.7)
+      }
+    }
+    mtext(side = 1, line = 2.5, "Number of collisions/month")
+    if(sum(data1[2,], na.rm=TRUE) < 100&sum(data1[2,], na.rm=TRUE) > 15){
+      axis(side=1, at = c(0, 2, 4, 6, 8, 10))
+    }
+    if(sum(data1[2,], na.rm=TRUE) >= 100){
+      axis(side = 1, at = round(c(max(xmin - pad, 0), (xmin+(1*steps)), (xmin+(2*steps)), (xmin+(3*steps)), (xmax + pad))))
+    }
+    if(sum(data1[2,], na.rm=TRUE) <= 15){
+      axis(side=1, at = c(0, 0.5, 1, 1.5, 2))
+    }
+    #abline(v = params$threshold/12)
+  }
+}
+```
+
+<br>
+
+The number of collisions per month for each species and turbine model combination. For each month, 100 iterations of the simulation results show typical variation among iterations. The iterations among this set that exceed the user-specified threshold for the number of collisions, if set, are shown in red; iterations below this treshold are shown in blue. The mean and 95% range among iterations are shown for each month to the right of the plot. 
+
+<br>
+<br>
+
+```{r, fig3, fig.height = 4, fig.width = 6.5, echo=FALSE}
+
+#ATG - 030422 - fixed issue with negative values causing plot not to display properly
+num_turb_mods <- length(params$model_output[['Turbines']])
+if(num_turb_mods>1){
+  turbs_pair <- combn(num_turb_mods, 2)
+  for(i in 1:min(length(turbs_pair[1,]), 10)){
+    dataA <- rowSums(params$model_output[[as.numeric(params$option)]][[params$model_output[['CRSpecies']][1]]][[turbs_pair[1,i]]], na.rm=TRUE)
+    dataB <- rowSums(params$model_output[[as.numeric(params$option)]][[params$model_output[['CRSpecies']][1]]][[turbs_pair[2,i]]], na.rm=TRUE)
+    dataC <- dataA - dataB
+    #account for negatives
+    neg=F
+    if(sum(dataC, na.rm=TRUE)) neg=T
+    if(abs(sum(dataC, na.rm=TRUE)) < 300){
+      if(neg){
+        xmin=0
+        xmax=-5
+        pad <- round((xmax-xmin)*.1)
+        brks <- seq(0, -5, by=-1)
+      } else {
+        xmin=0
+        xmax=5
+        pad <- round((xmax-xmin)*.1)
+        brks <- seq(0, 5, by=1)
+      }
+
+    }else{
+      xmin <- min(dataC, na.rm=TRUE)
+      xmax <- max(dataC, na.rm=TRUE)
+      pad <- round((xmax-xmin)*.1)
+      brks <- seq(xmin, xmax, by=1)
+    }
+    
+    steps <- round(((xmax + pad) - (xmin - pad))/4)
+    
+    if(length(which(params$species_labels[,1] == params$model_output[['CRSpecies']][1]))>0){
+      main_label <- paste(params$species_labels[params$species_labels[,1] == params$model_output[['CRSpecies']][1], 2], " (turbine model ", params$model_output[['Turbines']][turbs_pair[2,i]], " - model ", params$model_output[['Turbines']][turbs_pair[1,i]], ")", sep="")
+    }else{
+      main_label <- paste(params$model_output[['CRSpecies']][1], " (turbine model ", params$model_output[['Turbines']][turbs_pair[2,i]], " - model ", params$model_output[['Turbines']][turbs_pair[1,i]], ")", sep="")
+    }
+    
+    par(mar=c(4, 4.5, 2, 1))
+    hist(dataC, main=main_label, breaks=brks, xaxt="n", ylab=" ", xlim=c(xmin-5*pad, xmax+5*pad), col=rgb(68/255, 119/255, 170/255), bty="n", xlab=" ", border = "white")
+    mtext(side = 1, line=2.25, "Difference in number of collisions/year")
+    mtext(side = 2, line=2.5, "Frequency")
+    if(abs(sum(dataC, na.rm=TRUE)) < 300){
+      if(neg){
+        axis(side=1, at=seq(0, -5, by=-1))
+      } else{
+        axis(side=1, at=seq(0, 5, by=1))
+      }
+    } else {
+      axis(side=1, at = round(c(max(xmin - pad, 0), (xmin - pad + (1*steps)), (xmin - pad + (2*steps)), (xmin - pad + (3*steps)), (xmax + pad))))
+    }
+  }
+}else{
+  par(mar=c(4, 4.5, 3, 1))
+  plot(1:1, col="white", xlim=c(0, 10), ylim=c(0, 10), xaxt="n", yaxt="n", xlab=" ", ylab=" ", bty="n")
+  text(4, 5, "Only one turbine model specified.", cex=1.5, adj=c(0.5, 0.5))
+  box(which="outer")
+}
+
+```
+
+<br>
+
+If multiple turbine models were run, this space shows histograms comparing the difference in the number of collisions per year between models. The y-axis shows the frequency among iterations of each value for the difference between models, labeled by their power output. If the entire histogram lies above zero, the number of collisions was always higher for model listed first. 
+
+<br>
+<br>
+
+Results of the stochastic simulation for each value provided or selected for the species data. 
+
+```{r, echo=FALSE}
+num_species <- length(params$model_output[['CRSpecies']])
+num_turb_mods <- length(params$model_output[['Turbines']])
+sampled_subset <- subset(
+  params$model_output[['sampledParamsBird']][[params$model_output[['CRSpecies']][1]]][[1]])
+  #,
+  #select=-c(AvoidanceBasic))
+n_table_cols <- length(sampled_subset[1,])
+col_names <- colnames(sampled_subset)
+#col_names[col_names == "AvoidanceExtended"] <- "Avoidance"
+bird_params_table <- mat.or.vec(num_species*num_turb_mods, (n_table_cols + 2))
+
+for(e in 1:num_species){
+  for(i in 1:num_turb_mods){
+    index_a <- (num_turb_mods*e) - (num_turb_mods - i)
+    bird_params_table[index_a, 1] <- gsub("_", " ", params$model_output[['CRSpecies']][e])
+    bird_params_table[index_a, 2] <- rev(params$model_output[['Turbines']])[i]
+    for(z in 1:n_table_cols){
+      if(params$option == "1"){
+        bird_params_temp <- subset(
+          params$model_output[['sampledParamsBird']][[params$model_output[['CRSpecies']][e]]][[num_turb_mods-(i-1)]])[,z]
+          #,
+          #select=-c(AvoidanceExtended))[,z]
+      }else{
+        bird_params_temp <- subset(
+          params$model_output[['sampledParamsBird']][[params$model_output[['CRSpecies']][e]]][[num_turb_mods-(i-1)]])[,z]
+          #,
+          #select=-c(AvoidanceBasic))[,z]
+      }
+      mean_temp <- round(mean(bird_params_temp), 2)
+      lower_temp <- round(quantile(bird_params_temp, c(.025)), 2)
+      upper_temp <- round(quantile(bird_params_temp, c(.975)), 2)
+      bird_params_table[index_a, (z + 2)] <- paste(mean_temp, " (", lower_temp, ", ", upper_temp, ")", sep="")
+    }
+  }
+}
+colnames(bird_params_table) <- c("Species", "Turbine Power (MW)", c("Avoidance", "Wing span", "Body length", "Speed"))
+
+library(knitr)
+kable(bird_params_table, caption = "For each parameter, the mean and 95% range (show in the parenthetical) is given for each species and turbine model combination.")
+```
+
+<br>
+<br>
+
+Results of the stochastic simulation for each value provided or selected for the turbine and wind farm data.  
+
+```{r, echo=FALSE}
+
+#ATG - 030422 - slight change to format tables
+options(width = 60)
+num_species <- length(params$model_output[['CRSpecies']])
+num_turb_mods <- length(params$model_output[['Turbines']])
+sampled_subset <- subset(
+  params$model_output[['sampledParamsTurbine']][[params$model_output[['CRSpecies']][1]]][[1]], 
+  select=c(Num_Turbines, RotorRadius_m, HubHeight_m, BladeWidth_m, WindSpeed_mps, RotorSpeed_rpm, Pitch_rad, WFWidth_km, Latitude,
+           Prop_Upwind))
+n_table_cols1 <- length(sampled_subset[1,1:5])
+n_table_cols2 <- length(sampled_subset[1,6:10])
+
+col_names <- colnames(sampled_subset)
+#turb_params_table <- mat.or.vec(num_species*num_turb_mods, (n_table_cols + 2))
+turb_params_table <- mat.or.vec(num_species*num_turb_mods, (n_table_cols1 + 2))
+turb_params_table2 <- mat.or.vec(num_species*num_turb_mods, (n_table_cols2 + 2))
+
+for(e in 1:num_species){
+  for(i in 1:num_turb_mods){
+    index_a <- (num_turb_mods*e) - (num_turb_mods - i)
+    turb_params_table[index_a, 1] <- gsub("_", " ", params$model_output[['CRSpecies']][e])
+    turb_params_table[index_a, 2] <- rev(params$model_output[['Turbines']])[i]
+    turb_params_table2[index_a, 1] <- gsub("_", " ", params$model_output[['CRSpecies']][e])
+    turb_params_table2[index_a, 2] <- rev(params$model_output[['Turbines']])[i]
+    for(z in 1:n_table_cols1){
+      turb_params_temp <- subset(
+        params$model_output[['sampledParamsTurbine']][[params$model_output[['CRSpecies']][e]]][[num_turb_mods-(i-1)]], 
+        select=c(Num_Turbines, RotorRadius_m, HubHeight_m, BladeWidth_m, WindSpeed_mps))[, z]
+      mean_temp <- round(mean(turb_params_temp), 2)
+      lower_temp <- round(quantile(turb_params_temp, c(.025)), 2)
+      upper_temp <- round(quantile(turb_params_temp, c(.975)), 2)
+      
+      turb_params_table[index_a, (z + 2)] <- paste(mean_temp, " (", lower_temp, ", ", upper_temp, ")", sep="")
+    }
+    for(z in 1:n_table_cols2){
+      turb_params_temp2 <- subset(
+        params$model_output[['sampledParamsTurbine']][[params$model_output[['CRSpecies']][e]]][[num_turb_mods-(i-1)]],
+        select=c(RotorSpeed_rpm, Pitch_rad, WFWidth_km, Latitude, Prop_Upwind))[, z]
+      mean_temp2 <- round(mean(turb_params_temp2), 2)
+      lower_temp2 <- round(quantile(turb_params_temp2, c(.025)), 2)
+      upper_temp2 <- round(quantile(turb_params_temp2, c(.975)), 2)
+      turb_params_table2[index_a, (z + 2)] <- paste(mean_temp2, " (", lower_temp2, ", ", upper_temp2, ")", sep="")
+    }
+  }
+}
+colnames(turb_params_table) <- c("Species", "Turbine Power (MW)", "Num. turbines", "Rotor radius", "Hub height (m)", "Blade width (m)", "Wind speed (mps)")
+colnames(turb_params_table2) <- c("Species", "Turbine Power (MW)", "Rotor speed (rpm)", "Pitch (radians)", "Farm width (km)", "Lat.", "Prop. upwind")
+
+library(knitr)
+kable(turb_params_table, caption = "For each parameter, the mean and 95% range (show in the parenthetical) is given for each species and turbine model combination.")
+kable(turb_params_table2, caption = "For each parameter, the mean and 95% range (show in the parenthetical) is given for each species and turbine model combination.")
+```
+
+<br>
+<br>
+
+Results of the stochastic simulation for each value provided or selected for the proportion of each month that turbines are operational.  
+
+```{r, echo=FALSE}
+#ATG - 030422 - slight change to format tables, split into 2
+num_species <- length(params$model_output[['CRSpecies']])
+num_turb_mods <- length(params$model_output[['Turbines']])
+sampled_subset <- subset(
+  params$model_output[['sampledParamsTurbine']][[params$model_output[['CRSpecies']][1]]][[1]],
+  select=c(JanOp,FebOp,MarOp,AprOp,MayOp,JunOp,JulOp,AugOp,SepOp,OctOp,NovOp,DecOp))
+# n_table_cols <- length(sampled_subset[1,])
+n_table_cols3 <- length(sampled_subset[1,1:6])
+n_table_cols4 <- length(sampled_subset[1,7:12])
+col_names <- colnames(sampled_subset)
+turb_params_table3 <- mat.or.vec(num_species*num_turb_mods, (n_table_cols3 + 2))
+turb_params_table4 <- mat.or.vec(num_species*num_turb_mods, (n_table_cols4 + 2))
+
+for(e in 1:num_species){
+  for(i in 1:num_turb_mods){
+    index_a <- (num_turb_mods*e) - (num_turb_mods - i)
+    turb_params_table3[index_a, 1] <- gsub("_", " ", params$model_output[['CRSpecies']][e])
+    turb_params_table3[index_a, 2] <- rev(params$model_output[['Turbines']])[i]
+    turb_params_table4[index_a, 1] <- gsub("_", " ", params$model_output[['CRSpecies']][e])
+    turb_params_table4[index_a, 2] <- rev(params$model_output[['Turbines']])[i]
+    for(z in 1:n_table_cols1){
+      turb_params_temp <- subset(
+        params$model_output[['sampledParamsTurbine']][[params$model_output[['CRSpecies']][e]]][[num_turb_mods-(i-1)]], 
+        select=c(JanOp,FebOp,MarOp,AprOp,MayOp,JunOp))[, z]
+      mean_temp <- round(mean(turb_params_temp), 1)
+      lower_temp <- round(quantile(turb_params_temp, c(.025)), 1)
+      upper_temp <- round(quantile(turb_params_temp, c(.975)), 1)
+      
+      turb_params_table3[index_a, (z + 2)] <- paste(mean_temp, " (", lower_temp, ", ", upper_temp, ")", sep="")
+    }
+    for(z in 1:n_table_cols2){
+      turb_params_temp <- subset(
+        params$model_output[['sampledParamsTurbine']][[params$model_output[['CRSpecies']][e]]][[num_turb_mods-(i-1)]], 
+        select=c(JulOp,AugOp,SepOp,OctOp,NovOp,DecOp))[, z]
+      mean_temp <- round(mean(turb_params_temp), 1)
+      lower_temp <- round(quantile(turb_params_temp, c(.025)), 1)
+      upper_temp <- round(quantile(turb_params_temp, c(.975)), 1)
+      
+      turb_params_table4[index_a, (z + 2)] <- paste(mean_temp, " (", lower_temp, ", ", upper_temp, ")", sep="")
+    }
+  }
+}
+colnames(turb_params_table3) <- c("Species", "Turbine Power (MW)", c("Jan", "Feb", "Mar", "Apr", "May", "Jun"))
+colnames(turb_params_table4) <- c("Species", "Turbine Power (MW)", c("Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))
+
+library(knitr)
+kable(turb_params_table3, caption = "For each parameter, the mean and 95% range (show in the parenthetical) is given for each species and turbine model combination.")
+kable(turb_params_table4, caption = "For each parameter, the mean and 95% range (show in the parenthetical) is given for each species and turbine model combination.")
+
+```
+
+<br>
+<br>
+
+```{r fig2, fig.height = 8, fig.width = 5, echo=FALSE}
+    #par(mfrow = c(6, 1), mar=c(3,4,2,1))
+    #boxplot(params$model_output$tab1, outline=F,ylab="Number of collisions", main="Option 1", ylim=c(0,max(max(params$model_output$tab1), max(params$model_output$tab2), max(params$model_output$tab3), max(params$model_output$tab4), max(params$model_output$tab5), max(params$model_output$tab6))))
+    #boxplot(params$model_output$tab2, outline=F, ylab="Number of collisions", main="Option 2", ylim=c(0,max(max(params$model_output$tab1), max(params$model_output$tab2), max(params$model_output$tab3), max(params$model_output$tab4), max(params$model_output$tab5), max(params$model_output$tab6))))
+    #boxplot(params$model_output$tab3, outline=F, ylab="Number of collisions", main="Option 3", ylim=c(0,max(max(params$model_output$tab1), max(params$model_output$tab2), max(params$model_output$tab3), max(params$model_output$tab4), max(params$model_output$tab5), max(params$model_output$tab6))))
+    #boxplot(params$model_output$tab4, outline=F ,ylab="Number of collisions", main="Option 4", ylim=c(0,max(max(params$model_output$tab1), max(params$model_output$tab2), max(params$model_output$tab3), max(params$model_output$tab4), max(params$model_output$tab5), max(params$model_output$tab6))))
+    #boxplot(params$model_output$tab5, outline=F, ylab="Number of collisions", main="Option 5", ylim=c(0,max(max(params$model_output$tab1), max(params$model_output$tab2), max(params$model_output$tab3), max(params$model_output$tab4), max(params$model_output$tab5), max(params$model_output$tab6))))
+    #boxplot(params$model_output$tab6, outline=F, ylab="Number of collisions", main="Option 6", ylim=c(0,max(max(params$model_output$tab1), max(params$model_output$tab2), max(params$model_output$tab3), max(params$model_output$tab4), max(params$model_output$tab5), max(params$model_output$tab6))))
+```
+
