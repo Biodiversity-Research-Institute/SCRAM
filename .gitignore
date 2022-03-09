@@ -1,0 +1,7 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+files that do not get uploaded to server (inc. metadata)
+results
+rsconnect
