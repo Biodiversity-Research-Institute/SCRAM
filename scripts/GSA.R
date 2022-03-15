@@ -1,9 +1,11 @@
 GSA_approx <- function(CRMlist, optionsGSA){
+  browser()
   ar_out_tab_sort <- list(list())
   for(i in 1:length(CRMlist[['CRSpecies']])){
     for(e in 1:length(CRMlist[['Turbines']])){
   # get the number of collisions per year for each iteration of the CRM model output
-  annual_colls <- rowSums(CRMlist[[as.numeric(optionsGSA)]][[CRMlist[['CRSpecies']][i]]][[paste0("turbModel", CRMlist[['Turbines']][1])]])
+  # ATG - some cols are NA, so need RM for sums
+  annual_colls <- rowSums(CRMlist[[as.numeric(optionsGSA)]][[CRMlist[['CRSpecies']][i]]][[paste0("turbModel", CRMlist[['Turbines']][1])]], na.rm = T)
   # combine turbine and bird parameters for a global sensitivity analysis
   params_iter <- cbind(CRMlist[["sampledParamsTurbine"]][[CRMlist[['CRSpecies']][i]]][[paste0("turbModel", CRMlist[['Turbines']][1])]],
                        CRMlist[["sampledParamsBird"]][[CRMlist[['CRSpecies']][i]]][[paste0("turbModel", CRMlist[['Turbines']][1])]])

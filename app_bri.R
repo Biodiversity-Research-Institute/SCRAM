@@ -17,19 +17,14 @@
 
 
 source("helpers.R")
-# currentdir <- normalizePath(getwd(), winslash = "/")
-# source(file.path(currentdir, "helpers.R"))
+
 options(shiny.trace = F)
 
 ui <- dashboardPage(
   skin = "green",
   dashboardHeader(
-    # div(style = "height:95px;padding-top: 10px", imageOutput("myImageHeader")),
-    
     titleWidth = 400,
-    # title =
-    # tags$h4("Stochastic Collision Risk Assessment for Movement"
-    # ),
+
     tags$li(
       class = "dropdown",
       actionLink("appvrsn", label = tags$b("Stochastic Collision Risk Assessment for Movement: v0.7 - Arbovitae"), style = "font-size: 19px"),
@@ -40,7 +35,7 @@ ui <- dashboardPage(
       class = "dropdown",
       a(
         icon('github', "fa-2x"),
-        href = 'https://github.com/bltern/SCRAM',
+        href = 'https://github.com/Biodiversity-Research-Institute/SCRAM',
         style = "padding-top: 10px; padding-bottom: 10px",
         target = '_blank',
         id = "lbl_codeLink"
@@ -52,7 +47,7 @@ ui <- dashboardPage(
       class = "dropdown",
       a(
         icon('bug', "fa-2x"),
-        href = 'https://github.com/bltern/SCRAM/issues',
+        href = 'https://github.com/Biodiversity-Research-Institute/SCRAM/issues',
         #exclamation-circle
         style = "padding-top: 10px; padding-bottom: 10px",
         target = '_blank',
@@ -60,15 +55,13 @@ ui <- dashboardPage(
       ),
       style = "float: left"
     ),
-    
-    # tags$li(class = "dropdown", actionLink("bookmark_btt", label = NULL, icon("bookmark", "fa-2x", lib = "font-awesome"),
-    #                                        style = "padding-top: 10px; padding-bottom: 10px")),
+
+    tags$li(class = "dropdown", actionLink("bookmark_btt", label = NULL, icon("bookmark", "fa-2x", lib = "font-awesome"),
+                                           style = "padding-top: 10px; padding-bottom: 10px")),
     # tags$li(class = "dropdown", actionLink("saveInputs_btt", label = NULL, icon("save", "fa-2x", lib = "font-awesome"),
     #                                        style = "padding-top: 10px; padding-bottom: 10px")),
     # tags$li(class = "dropdown", actionLink("restoreInputs_btt", label = NULL, icon("window-restore", "fa-2x", lib = "font-awesome"),
     #                                        style = "padding-top: 10px; padding-bottom: 10px")),
-    
-    
     tags$li(
       class = "dropdown",
       a(
@@ -118,6 +111,8 @@ ui <- dashboardPage(
   dashboardSidebar(
     collapsed = F,
     width=400,
+    title= 
+  
     sidebarMenu(
       id = "sidebar",
       tags$a(
@@ -183,15 +178,14 @@ ui <- dashboardPage(
                  column(4, 
                         uiOutput("cancel")))
       )
-
   )),
 
   dashboardBody(
-    tags$head(
-      tags$link(rel = "stylesheet",
-                type = "text/css",
-                href = "www/style.css")
-    ),
+    # tags$head(
+    #   tags$link(rel = "stylesheet",
+    #             type = "text/css",
+    #             href = "www/style.css")
+    # ),
 
     useShinyjs(),
 
@@ -341,6 +335,7 @@ ui <- dashboardPage(
                         br(),
                         plotOutput("plot2", height = "300px", width = "460px")
                  ), 
+                 #buttons for sensitivity Analysis, sownloading output, and generating report
                  column(6,
                         h4("Next steps:"), 
                         br(),
@@ -680,6 +675,16 @@ server <- function(input, output, session) {
       dom = 't',
       scrollX = TRUE
     ))
+  
+  
+  bladeIcon <- makeIcon(
+    iconUrl = "www/outline_wind_power_black_36dp.png",
+    iconWidth = 36, iconHeight = 36,
+    iconAnchorX = 0, iconAnchorY = 36,
+    # shadowUrl = ,
+    # shadowWidth = 50, shadowHeight = 64,
+    # shadowAnchorX = 4, shadowAnchorY = 62
+  )
     
   #render the map with the lat/longs given in the study area map panel
   output$studymap <- renderLeaflet({
@@ -689,20 +694,20 @@ server <- function(input, output, session) {
         #add BOEM renewable lease areas as a WFS
         url = "https://services1.arcgis.com/Hp6G80Pky0om7QvQ/ArcGIS/rest/services/BOEM_Wind_Planning_and_Lease_Areas/FeatureServer/0",
         weight = 1, fill=FALSE, color = "#808080", #gray
-        layerId = "BOEM_wind_leases", 
-        group = "BOEM wind leases") %>% 
+        layerId = "BOEM_wind_leases",
+        group = "BOEM wind leases") %>%
       addEsriFeatureLayer(
         #add BOEM renewable lease areas as a WFS
         url = "https://services1.arcgis.com/Hp6G80Pky0om7QvQ/ArcGIS/rest/services/BOEM_Wind_Planning_and_Lease_Areas/FeatureServer/2",
         weight = 1, fill=FALSE, color = "#C0C0C0", #silver
-        layerId = "BOEM_wpa", 
-        group = "BOEM wind planning areas") %>% 
-      #MOTUS antenna data
+        layerId = "BOEM_wpa",
+        group = "BOEM wind planning areas") %>%
+      # MOTUS antenna data
       addMarkers(
-        data = wind_farm_df(),
-        # data = react_latlon(),
+        data = isolate(wind_farm_df()),
         lat = ~ Latitude,
         lng = ~ Longitude,
+        icon = bladeIcon,
         popup =
           paste0(
             "Run: ",
@@ -954,7 +959,7 @@ server <- function(input, output, session) {
       loc_match[2] <- which(unlist(loc_match_dists) == min(unlist(loc_match_dists)))[1]
       loc_match[3] <- cell_match[which(unlist(loc_match_dists) == min(unlist(loc_match_dists)))[1],'area']
     }
-    print(paste("loc_match",loc_match))
+    # print(paste("loc_match",loc_match))
     loc_match
   })
 
@@ -1157,6 +1162,7 @@ server <- function(input, output, session) {
   # create a reactive object for the sensitivity analyses
   GSA_fun <- eventReactive(
     input$runGSA, {
+      browser()
       GSA_approx(CRM_fun(), input$optionradio)
     })
 
