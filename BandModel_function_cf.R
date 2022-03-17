@@ -136,14 +136,14 @@ stochasticBand <- function(
   # unmute the following 5 lines to set up results folder locally for saving results and run metadata
   # create folders and paths ------------------------------------------------
   # create results folder
-  if(results_folder == "") results_folder <- Sys.Date() ## if no name given for results folder, use today's date
-  if(results_folder !="") dir.create(results_folder) ## if name given for results folder use that and create folder
+  # if(results_folder == "") results_folder <- Sys.Date() ## if no name given for results folder, use today's date
+  # if(results_folder !="") dir.create(results_folder) ## if name given for results folder use that and create folder
 
   # make input, figures, and tables folders
-  dir.create(paste(results_folder, "figures", sep="/"))
-  dir.create(paste(results_folder, "tables", sep="/"))
-  dir.create(paste(results_folder, "input", sep="/"))
-  
+  # dir.create(paste(results_folder, "figures", sep="/"))
+  # dir.create(paste(results_folder, "tables", sep="/"))
+  # dir.create(paste(results_folder, "input", sep="/"))
+  # 
   # moved out of first loop to precede day length calculations
   # create data frame for turbine data
   #sampledTurbine <- data.frame(matrix(data = 0, ncol = 23, nrow = iter))
@@ -495,24 +495,24 @@ stochasticBand <- function(
   
     # unmute the following 4 lines to save the input data used for the run locally
     # output input data
-    write.csv(BirdData, paste(results_folder,"input", "BirdData.csv", sep="/"))
-    write.csv(CountData, paste(results_folder,"input", "birdDensityData.csv", sep="/")) # change of file name from Masden, for clarity
-    write.csv(TurbineData, paste(results_folder,"input", "TurbineData.csv", sep="/"))
+    # write.csv(BirdData, paste(results_folder,"input", "BirdData.csv", sep="/"))
+    # write.csv(CountData, paste(results_folder,"input", "birdDensityData.csv", sep="/")) # change of file name from Masden, for clarity
+    # write.csv(TurbineData, paste(results_folder,"input", "TurbineData.csv", sep="/"))
     # output results table
-    write.csv(resultsSummary, paste(results_folder,"tables", "CollisionEstimates.csv", sep="/"))
+    # write.csv(resultsSummary, paste(results_folder,"tables", "CollisionEstimates.csv", sep="/"))
     
     run.time <- Sys.time() - start.time
     run.time
     
     # unmute the following 8 lines to save run metadata locally
-    sink(paste(results_folder,"run.time.txt", sep="/"))
-    print(run.time)
-    print(paste("The model ran", iter,"iterations", sep=" "))
-    print("The following species were modelled:")
-    print(CRSpecies)
-    print("The following turbine models were modelled:")
-    print(TurbineData$TurbineModel_MW)
-    sink()
+    # sink(paste(results_folder,"run.time.txt", sep="/"))
+    # print(run.time)
+    # print(paste("The model ran", iter,"iterations", sep=" "))
+    # print("The following species were modelled:")
+    # print(CRSpecies)
+    # print("The following turbine models were modelled:")
+    # print(TurbineData$TurbineModel_MW)
+    # sink()
     
     # return collision replicates as output  ===========
     return(list(monthCollsnReps_opt1 = monthCollsnReps_opt1, monthCollsnReps_opt2 = monthCollsnReps_opt2, 

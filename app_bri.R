@@ -429,12 +429,12 @@ server <- function(input, output, session) {
     4) Upload turbine and array data.<br>
     5) Check the wind farm data for correct values.<br>
     6) Choose which version of the CRM to run.<br>
-    6) Select the number of iterations (100-10,0000).<br>
-    7) Set a threshold for the maximum acceptable number of collisions.<br>
-    8) Run CRM.<br>
-    9) Run sensitivity analyses (optional).<br>
-    10) Generate summary report and/or download results for each iteration.<br>
-    11) Check the CRM results.")
+    7) Select the number of iterations (100-10,0000).<br>
+    8) Set a threshold for the maximum acceptable number of collisions.<br>
+    9) Run CRM.<br>
+    10) Run sensitivity analyses (optional).<br>
+    11) Generate summary report and/or download results for each iteration.<br>
+    12) Check the CRM results.")
   
   output$check_windfarm_instructions <- renderText(
     "<h4>INSTRUCTIONS:</h4><br>
@@ -795,7 +795,7 @@ server <- function(input, output, session) {
     if(!is.null(input$file_spp_param)){
     }else{
       bird_data <- read.csv("data/BirdData.csv", header = T)
-      species_data_row <- melt(bird_data[which(bird_data$Species==input$species_input), ], id.var=NULL)
+      species_data_row <- reshape2::melt(as.data.table(bird_data[which(bird_data$Species==input$species_input), ]), id.var=NULL)
       # colnames(species_data_row) <- c("values")
     }
     updateTabItems(session, inputId = "tabsetpan", selected = "species_panel")
@@ -1162,7 +1162,7 @@ server <- function(input, output, session) {
   # create a reactive object for the sensitivity analyses
   GSA_fun <- eventReactive(
     input$runGSA, {
-      browser()
+      # browser()
       GSA_approx(CRM_fun(), input$optionradio)
     })
 
@@ -1311,11 +1311,9 @@ server <- function(input, output, session) {
       # case we don't have write permissions to the current working dir (which
       # can happen when deployed).
       tempReport <- file.path(tempdir(), "report_BRI.Rmd")
-      file.copy("report_BRI.Rmd", tempReport, overwrite = TRUE)
-      # file_create(tempReport)
+      file.copy("data/report_BRI.Rmd", tempReport, overwrite = TRUE)
 
       # set up parameters to pass to Rmd document
-      # browser()
       params <- list(iterations = input$slider1, model_output = CRM_fun(), threshold = input$inputthreshold, option = input$optionradio, species_labels = SpeciesLabels)
       # Knit the document, passing in the `params` list, and eval it in a
       # child of the global environment (this isolates the code in the document
@@ -1350,9 +1348,9 @@ server <- function(input, output, session) {
 
   # download handler for example for turbine data
   output$downloadDataX <- downloadHandler(
-    filename = "URI_CRM_documentation.pdf",
+    filename = "SCRAM_documentation_031722.pdf",
     content = function(file) {
-      file.copy("URI_CRM_documentation.pdf", file)
+      file.copy("SCRAM_documentation_031722.pdf", file)
     }
   )
 

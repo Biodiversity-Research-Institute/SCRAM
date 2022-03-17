@@ -61,12 +61,12 @@ monthlySummaryOpt3[11,2:6] = c(mean(tab3$Nov, na.rm=TRUE), sd(tab3$Nov, na.rm=TR
 monthlySummaryOpt3[12,2:6] = c(mean(tab3$Dec, na.rm=TRUE), sd(tab3$Dec, na.rm=TRUE), CV(mean(tab3$Dec, na.rm=TRUE),sd(tab3$Dec, na.rm=TRUE)), median(tab3$Dec, na.rm=TRUE), IQR(tab3$Dec, na.rm=TRUE))
 
 # save tables  -----------------------------------------------------------
-fileName<-paste(TurbineData$TurbineModel_MW[t],CRSpecies[s],"monthlySummaryOpt1.csv", sep="_")
-write.csv (monthlySummaryOpt1, paste(results_folder,"tables",  fileName, sep="/"))
-fileName<-paste(TurbineData$TurbineModel_MW[t],CRSpecies[s],"monthlySummaryOpt2.csv", sep="_")
-write.csv (monthlySummaryOpt2, paste(results_folder,"tables",  fileName, sep="/"))
-fileName<-paste(TurbineData$TurbineModel_MW[t],CRSpecies[s],"monthlySummaryOpt3.csv", sep="_")
-write.csv (monthlySummaryOpt3, paste(results_folder,"tables",  fileName, sep="/"))
+# fileName<-paste(TurbineData$TurbineModel_MW[t],CRSpecies[s],"monthlySummaryOpt1.csv", sep="_")
+# write.csv (monthlySummaryOpt1, paste(results_folder,"tables",  fileName, sep="/"))
+# fileName<-paste(TurbineData$TurbineModel_MW[t],CRSpecies[s],"monthlySummaryOpt2.csv", sep="_")
+# write.csv (monthlySummaryOpt2, paste(results_folder,"tables",  fileName, sep="/"))
+# fileName<-paste(TurbineData$TurbineModel_MW[t],CRSpecies[s],"monthlySummaryOpt3.csv", sep="_")
+# write.csv (monthlySummaryOpt3, paste(results_folder,"tables",  fileName, sep="/"))
 
 
 # Add data to density tables ----------------------------------------------
@@ -135,8 +135,8 @@ sampledBirdParamsSummary[4, 2:5] = c(mean(sampledBirdParams$FlightSpeed), sd(sam
 
 
 #== write out bird parameter tables
-fileName<-paste(TurbineData$TurbineModel_MW[t],CRSpecies[s],"sampledBirdParameters.csv", sep="_")
-write.csv (sampledBirdParamsSummary, paste(results_folder,"tables", fileName, sep="/"))
+# fileName<-paste(TurbineData$TurbineModel_MW[t],CRSpecies[s],"sampledBirdParameters.csv", sep="_")
+# write.csv (sampledBirdParamsSummary, paste(results_folder,"tables", fileName, sep="/"))
 
 sampledBirdParamsIters = data.frame(matrix(data = 0, ncol = 4, nrow = iter))
 names(sampledBirdParamsIters) = c("Avoidance",  "WingSpan", "BodyLength", "FlightSpeed")
@@ -145,8 +145,8 @@ sampledBirdParamsIters[, 2] = sampledBirdParams$WingSpan
 sampledBirdParamsIters[, 3] = sampledBirdParams$BodyLength
 sampledBirdParamsIters[, 4] = sampledBirdParams$FlightSpeed
 
-fileName<-paste(TurbineData$TurbineModel_MW[t],CRSpecies[s],"sampledBirdParametersIters.csv", sep="_")
-write.csv (sampledBirdParamsIters, paste(results_folder,"tables", fileName, sep="/"), row.names=FALSE)
+# fileName<-paste(TurbineData$TurbineModel_MW[t],CRSpecies[s],"sampledBirdParametersIters.csv", sep="_")
+# write.csv (sampledBirdParamsIters, paste(results_folder,"tables", fileName, sep="/"), row.names=FALSE)
 
 
 # Turbine parameters ------------------------------------------------------
@@ -179,8 +179,8 @@ sampledTurbineParamsSummary[21, 2:5] = c(mean(sampledTurbine$NovOp), sd(sampledT
 sampledTurbineParamsSummary[22, 2:5] = c(mean(sampledTurbine$DecOp), sd(sampledTurbine$DecOp), median(sampledTurbine$DecOp), IQR(sampledTurbine$DecOp))
 
 #== write out turbine parameter tables
-fileName<-paste(TurbineData$TurbineModel_MW[t],CRSpecies[s],"sampledTurbineParameters.csv", sep="_")
-write.csv (sampledTurbineParamsSummary, paste(results_folder, "tables", fileName, sep="/"))
+# fileName<-paste(TurbineData$TurbineModel_MW[t],CRSpecies[s],"sampledTurbineParameters.csv", sep="_")
+# write.csv (sampledTurbineParamsSummary, paste(results_folder, "tables", fileName, sep="/"))
 
 sampledTurbineParamsIters = data.frame(matrix(data = 0, ncol = 22, nrow = iter))
 names(sampledTurbineParamsIters) = c("RotorRadius_m", "HubHeight_m", "BladeWidth_m", "WindSpeed_mps", "RotorSpeed_rpm", "Pitch_rad", "WFWidth_km", "Latitude", "Prop_Upwind", "Num_Turbines", "JanOp", "FebOp", "MarOp", "AprOp", "MayOp", "JunOp", "JulOp", "AugOp", "SepOp", "OctOp", "NovOp", "DecOp")
@@ -209,8 +209,8 @@ sampledTurbineParamsIters[, 21] = sampledTurbine$NovOp
 sampledTurbineParamsIters[, 22] = sampledTurbine$DecOp
 
 #== write out turbine parameter tables
-fileName<-paste(TurbineData$TurbineModel_MW[t],CRSpecies[s],"sampledTurbineParametersIters.csv", sep="_")
-write.csv (sampledTurbineParamsIters, paste(results_folder, "tables", fileName, sep="/"), row.names=FALSE)
+# fileName<-paste(TurbineData$TurbineModel_MW[t],CRSpecies[s],"sampledTurbineParametersIters.csv", sep="_")
+# write.csv (sampledTurbineParamsIters, paste(results_folder, "tables", fileName, sep="/"), row.names=FALSE)
 
 
   

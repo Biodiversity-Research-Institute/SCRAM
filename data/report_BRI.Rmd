@@ -1,6 +1,5 @@
 ---
-title: 'Summary of simulation results from SCRAM: a simulation tool for estimating
-  collision risk'
+title: 'Summary of simulation results from SCRAM: a stochastic collision risk assessment for movement data tool'
 output:
   pdf_document: default
 params:
@@ -10,6 +9,7 @@ params:
   option: NA
   species_labels: NA
 ---
+
 <br>
 SCRAM was developed by Biodiversity Research Institute, the University of Rhode Island, and U.S. Fish and Wildlife Service with funding from the Bureau of Ocean Energy Management.
 <br>
