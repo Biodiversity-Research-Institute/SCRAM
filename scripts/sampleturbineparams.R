@@ -63,7 +63,7 @@ for(currentMonth in monthLabels){
   
   #workingOp <- TurbineData %>% select(contains(currentMonth)) %>% select(-contains('SD'), -contains('Mean'))
   workingOp <- TurbineData[t , paste(currentMonth, "Op", sep="")]
-  
+  # browser()
   # if we have an SD, then we sample, otherwise just the mean
   #if(!is.na(workingSD[1,1])){
   if(!is.na(workingSD)){

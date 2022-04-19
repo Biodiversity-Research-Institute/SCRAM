@@ -53,7 +53,7 @@ stochasticBand <- function(
   results_folder = "results", 
   BirdData = tablereact4,
   TurbineData = tablereact2,
-  CountData =tablereact8,
+  CountData = tablereact8,
   movement_type = movement_type2,
   FlightData = tablereact6,
   iter = 100,
@@ -86,7 +86,6 @@ stochasticBand <- function(
   source("scripts/datachecksCounts.R", local=T)
   # user provides site-level passage rates as counts instead of movement model output (see manual)
   #source("scripts/datachecksMovement.R", local=T)
-
   # run checks on input data files; if there are any failures, run this loop for an error message
   if(length(which(check < length(TurbineData[,1])))>0|length(which(checkBirdData < length(BirdData[,1])))>0|sum(checkFHD) != (2*length(FlightData))|sum(checkCounts) != 2){
     TurbineError <- c("Num_Turbines","TurbineModel_MW", "Num_Blades", "RotorRadius_m", "RotorRadiusSD_m", "HubHeightAdd_m", "HubHeightAddSD_m", "BladeWidth_m", "BladeWidthSD_m", "WindSpeed_mps", "WindSpeedSD_mps", 
@@ -115,7 +114,7 @@ stochasticBand <- function(
   # preamble ---------------------------------------------------------------
   # start timer
   start.time <- Sys.time()
-  
+   
   ### potential to improve efficiency and stability here ###
   S <- iter*20 # this is number of samples, increased to ensure enough valid values (used in get_rotor_plus_pitch_auto.R)
   
@@ -246,9 +245,9 @@ stochasticBand <- function(
     #ht<-paste("data/", CRSpecies[s],"_ht_dflt.csv", sep='')
     #FlightHeightSpec <- read.csv(ht, header = T)
     if(is.list(FlightData)){
-    FlightHeightSpec <- FlightData[[which(lapply(1:length(CRSpecies), function(x) FlightData[[x]][1,1])==CRSpecies[s])[1]]]
+      FlightHeightSpec <- FlightData[[which(lapply(1:length(CRSpecies), function(x) FlightData[[x]][1,1])==CRSpecies[s])[1]]]
     }else{
-    FlightHeightSpec <- FlightData
+      FlightHeightSpec <- FlightData
     }
     
     flight.boot <- 3:dim(FlightHeightSpec)[2] # skip second column since it contains heights, and first column because it has the species ID
@@ -303,6 +302,8 @@ stochasticBand <- function(
       # outputs large (size S) rotor speeds and pitch - sampled into the DF
       source("scripts/sampleturbineparams.R", local=T)
       
+      # browser() 
+      
       #MonthlyOperational <- sampledTurbine %>% select(contains("Op", ignore.case = F))
       # cf added a version that accomplished the same goal without using 'dplyr'
       MonthlyOperational <- sampledTurbine[, grep("Op", colnames(sampledTurbine))]
@@ -354,7 +355,7 @@ stochasticBand <- function(
           currentBirdLength <- sampledBirdParams$BodyLength[i]
 
           # estimate collision risk - options appear here ------------------------------
-          ############## STEP ONE - Calculate the collision risk in the absence of avoidance aNTurbinesction
+          ############## STEP ONE - Calculate the collision risk in the absence of avoidance action
           source("scripts/ProbabilityCollision.R", local=T)
 
           ############## STEP TWO - Calculate Flux Factor - the number of birds passing a turbine in each month
@@ -371,10 +372,19 @@ stochasticBand <- function(
           # calculate number of turbine rows - manually enter if appropriate
           NTurbRows <- NTurbines ^ 0.5
           
+          #ATG - check MeanOperational[i]/100 code I think it actually might need to be  100^2
+          #also in the original stochastic CRM code there was a difference from how MeanOperational was calculated:
+          # Original: MeanOperational = as.numeric(workingOp) - workingVect  (where workingVect is the sampled mean/SD downtime) e.g, 96% - 6% = 90%
+          # CollideR: MeanOperational =  workingOp*(100 - workingVect) = 96% monthly operation * (100 - 6% sampled downtime) = 9024%^2
+          # However, this code that was directly copied from original to CollideR: MeanOperational[i]/100 results in a proportion 0-1) of operation and 
+          # in CF CollideR a percentaage. So I think that this is indeed wrong. The next question is the subtle difference between subtracting the downtime 
+          # from total operational time, vs. multiplying two percentages (or  proportions). I think his argument is that downtime is independent of the 
+          # time turbines can be operational due to good wind speeds and thus should be multiplicative. E.g., a turbine can be operating 96% of the time 
+          # in a month due to good wind speeds, but within that month it's down 6% of the time due to maintenance that it could be operating 
+          # thus should be 0.96 * (1 - 0.06) = 0.9024 or 90.24% operational per month.
+          
           CollRiskSinglePassage <- NTurbines * (pi * sampledTurbine$RotorRadius_m[i]^2)/(2 * sampledTurbine$RotorRadius_m[i] * TurbineData$WFWidth_km[t] * 1000) * 
             (P_Collision/100) * (MeanOperational[i]/100) * (1-sampledBirdParams$Avoidance[i])
-          
-          
           
           L_ArrayCF <- 1 - (NTurbRows - 1) / (2*NTurbRows) * CollRiskSinglePassage + 
             (NTurbRows - 1) * (2*NTurbRows)/(6 * NTurbRows^2) * (CollRiskSinglePassage ^2)

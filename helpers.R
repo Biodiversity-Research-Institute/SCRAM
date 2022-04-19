@@ -30,13 +30,18 @@ library(tinytex)
 library(ipc)
 library(leaflet)
 library(leaflet.esri)
+library(ggplot2)
 library(future)
 library(promises)
 plan(multiprocess)
 
-#1/2 degree grid with 0 low confidence and 1 high confidence range for calcs 
-# FRom CF. These seem to be the same for PIPL, ROST, REKN
-# conf_grid_BOEM_halfdeg <- rgdal::readOGR("data", "BOEM_halfdeg_grid_latlon_2021")
-# high_conf_grid <- conf_grid_BOEM_halfdeg[which(conf_grid_BOEM_halfdeg$PIPL==0),]
-# high_conf_grid_polys <- high_conf_grid@polygons
-# sp::spplot(conf_grid_BOEM_halfdeg)
+
+#load the species movement model mean monthly probability data
+#generate all species data
+data_dir <- "P:/SCRAM/BRI/SCRAM_shiny/data"
+for (species in c("Red_Knot", "Piping_Plover", "Roseate_Tern")){
+  data_layer <-  paste0(species, "_monthly_prob_BOEM_half_deg")
+  load(file.path(data_dir, paste0(species, "_monthly_prob_BOEM_half_deg.RData")))
+  assign(data_layer, spp_monthly_prob_BOEM_half_deg)
+}
+rm(spp_monthly_prob_BOEM_half_deg)

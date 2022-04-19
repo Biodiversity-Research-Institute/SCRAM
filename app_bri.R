@@ -6,14 +6,16 @@
 #
 #    http://shiny.rstudio.com/
 #
-
-# created: 16 Feb 2022
 # A. Gilbert
 # Biodiversity Research Institute
 # 276 Canco Rd
 # Portland, ME 04103
 # This tool was modified from one largely developed by Chris Field at the University of Rhode Island and depends on code
 # from the Stochastic Band model
+# created: 16 Feb 2022
+# Modified 06 April 2022 - pre-render movement data for plotting and tables for PIPL, REKN, ROST; prerender summary flt ht for same
+#   Add back probability prediction for exceeding collision threshold
+#   Create probability of occurrence polygons layers for PIPL, REKN, ROST from baked data files for mapping
 
 
 source("helpers.R")
@@ -27,7 +29,7 @@ ui <- dashboardPage(
 
     tags$li(
       class = "dropdown",
-      actionLink("appvrsn", label = tags$b("Stochastic Collision Risk Assessment for Movement: v0.7 - Arbovitae"), style = "font-size: 19px"),
+      actionLink("appvrsn", label = tags$b("Stochastic Collision Risk Assessment for Movement: v0.71 - Betula"), style = "font-size: 19px"),
       style = "float: left"
     ),
     
@@ -326,9 +328,12 @@ ui <- dashboardPage(
                    fluidRow(column(
                      width = 12, verbatimTextOutput("hack", placeholder = TRUE), 
                      # verbatimTextOutput("study_design_report_txt")
-                   ))
-                 )
-               ),
+                   )),
+                   fluidRow(column(
+                     width = 12, verbatimTextOutput("prob", placeholder = TRUE), 
+                   )
+                   )
+                   )),
                fluidRow(
                  column(6,
                         h4("Output dashboard"), 
@@ -349,13 +354,13 @@ ui <- dashboardPage(
                fluidRow(
                  br(),
                  br(),
-                 h4("This tool was developed by Biodiversity Research Institute, The University of Rhode Island, and 
+                 p("This tool was developed by Biodiversity Research Institute, The University of Rhode Island, and 
                     U.S. Fish and Wildlife Service with funding from the Bureau of Ocean Energy Management.", 
-                    style = "margin: 32px; color: steelblue; font-weight: bold;")
+                    style = "margin: 20px; color: steelblue; font-size: 16px")
 
                )
-      )
-    )
+      )#tabpanel results
+    ) 
   )
 )
 
@@ -423,22 +428,25 @@ server <- function(input, output, session) {
   
   output$user_instructions <- renderText(
   "<h4>INSTRUCTIONS:</h4><br>
-    1) Select the species of interest or select the option for providing your own species data.<br>
-    2) Upload species data (optional if selecting from among the three target species).<br>
-    3) Check the species data for correct values.<br>
-    4) Upload turbine and array data.<br>
-    5) Check the wind farm data for correct values.<br>
-    6) Choose which version of the CRM to run.<br>
-    7) Select the number of iterations (100-10,0000).<br>
-    8) Set a threshold for the maximum acceptable number of collisions.<br>
-    9) Run CRM.<br>
-    10) Run sensitivity analyses (optional).<br>
-    11) Generate summary report and/or download results for each iteration.<br>
-    12) Check the CRM results.")
+    1) Select the species of interest OR upload your own species data if that option is selected.<br>
+    &nbsp &nbsp Example species input data can be downloaded using the button to the right.<br>
+    2) Check the species data for correct values in the tables and figures below.<br>
+    3) Download the example wind farm inuput data using the button to the right and either modify for your specific use <br>
+    &nbsp or use it directly to demonstrate the use of the tool.<br>
+    4) Upon proper loading of the wind farm data, the wind farm data tab will be shown. <br>
+    &nbsp Check the wind farm data for correct values in the include maps and tables. 
+    &nbsp Correct any errors and reload as necessary.<br>
+    5) Choose which version of the CRM to run.<br>
+    6) Select the number of iterations (100-10,0000).<br>
+    7) Set a threshold for the maximum acceptable number of collisions.<br>
+    8) Run CRM.<br>
+    9) Run sensitivity analyses (optional).<br>
+    10) Generate summary report and/or download results for each iteration.<br>
+    11) Check the CRM results.")
   
   output$check_windfarm_instructions <- renderText(
     "<h4>INSTRUCTIONS:</h4><br>
-     Check the wind farm data carefully before running this tool to make sure it's correct.<br>
+     Check the wind farm data carefully below before running this tool to make sure it's correct.<br>
      Fix any data in your original data file and upload again."
   )
   
@@ -473,6 +481,95 @@ server <- function(input, output, session) {
   SpeciesLabels <- read.table("data/SpeciesLabels.csv", sep =",")
 
   # main plot for annual collisions
+  # observeEvent(input$run, {output$plot2 <- renderPlot({
+  #   if(!is.null(CRM_fun()$monthCollsnReps_opt1)){
+  #     if(sum(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][1]]][[1]], na.rm=TRUE)>0){
+  #       NA_index <- which(is.na(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][1]]][[1]][1,]))
+  #       outvector <- round(rowSums(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][1]]][[1]], na.rm = TRUE))
+  #       month_lab <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+  #       if(max(outvector) >= 1000){
+  #         xmin <- round(min(outvector, na.rm=TRUE))
+  #         xmax <- round(max(outvector, na.rm=TRUE))
+  #         bin_wd <- round(max(outvector)/10)
+  #         brks <- seq(xmin, xmax+bin_wd, by=bin_wd)
+  #         pad_min <- round(xmin*0.1)
+  #         pad_max <- round(xmax*0.1)
+  #         steps <- round(((xmax + pad_max) - (xmin - pad_min))/4)
+  #       }
+  #       if(max(outvector) >= 10&max(outvector) < 1000){
+  #         xmin <- round(min(outvector, na.rm=TRUE))
+  #         xmax <- round(max(outvector, na.rm=TRUE))
+  #         bin_wd <- round(max(outvector)/10)
+  #         brks <- seq(xmin, xmax+bin_wd, by=bin_wd)
+  #         #brks <- seq(xmin, xmax, by=1)
+  #         pad_min <- round(xmin*0.1)
+  #         pad_max <- round(xmax*0.1)
+  #         steps <- round(((xmax + pad_max) - (xmin - pad_min))/4)
+  #       }
+  #       if(max(outvector) <= 2&max(outvector)>1){
+  #         xmin <- 0
+  #         xmax <- 2.1
+  #         brks <- seq(0, 2, by=0.2)
+  #         pad_min <- 0
+  #         pad_max <- 0
+  #       }
+  #       if(max(outvector) <= 1){
+  #         xmin <- 0
+  #         xmax <- 1.1
+  #         brks <- seq(0, 1, by=0.1)
+  #         pad_min <- 0
+  #         pad_max <- 0
+  #       }
+  #       if(max(outvector) < 10&max(outvector) > 2){
+  #         xmin <- 0
+  #         xmax <- 10.5
+  #         brks <- seq(0, 10, by=1)
+  #         pad_min <- 0
+  #         pad_max <- 0
+  #       }
+  #       layout(matrix(c(1, 1, 1, 1, 1, 1, 1, 1, 1, 2), 10, 1))
+  #       par(mar=c(5, 2, 4, 2))
+  #       if(length(which(SpeciesLabels[,1] == CRM_fun()[['CRSpecies']][1]))>0){
+  #         main_label <- SpeciesLabels[SpeciesLabels[,1] == CRM_fun()[['CRSpecies']][1], 2]
+  #       }else{
+  #         main_label <- CRM_fun()[['CRSpecies']][1]
+  #       }
+  #       hist(outvector, freq=FALSE, main = main_label, xlab=" ", ylab=" ", bty="n",
+  #            xlim=c(xmin - pad_min, xmax + pad_max), xaxt="n", breaks=brks, border = "white", col="dark green", #rgb(175/255, 122/255, 197/255, 0.8),
+  #            cex.axis=1.5, cex.main=1.7, yaxt="n")
+  #       mtext(side=1, line=2.8, "Total collisions over months highlighted below")
+  #       box(which="outer")
+  #       if(max(outvector) >= 10){
+  #         ticks <- round(c((xmin - pad_min), ((xmin - pad_min) +(1*steps)), ((xmin - pad_min) + (2*steps)), ((xmin - pad_min) +(3*steps)), (xmax + pad_max)), digits=1)
+  #         axis(side=1, at = ticks, cex.axis=1.5)
+  #       }
+  #       if(max(outvector) <= 2&max(outvector) > 1){
+  #         axis(side=1, labels = c(0, 0.4, 0.8, 1.2, 1.6, 2), at = c(0, 0.4, 0.8, 1.2, 1.6, 2)+0.1, cex.axis=1.5)
+  #       }
+  #       if(max(outvector) <= 1){
+  #         axis(side=1, labels = c(0, 0.2, 0.4, 0.6, 0.8, 1), at = c(0, 0.2, 0.4, 0.6, 0.8, 1)+0.05, cex.axis=1.5)
+  #       }
+  #       if(max(outvector) < 10&max(outvector) > 2){
+  #         axis(side=1, labels = c(0, 2, 4, 6, 8, 10), at = c(0, 2, 4, 6, 8, 10)+0.5, cex.axis=1.5)
+  #       }
+  #       polygon(x=c(input$inputthreshold, 0, 0, input$inputthreshold), y=c(0, 0, 1, 1), col=rgb(1, 1, 1, 0.65), border=rgb(0, 0, 0, 0))
+  #       bold <- rep(2, 12)
+  #       month_col <- rep("dark blue", 12)
+  #       month_col[NA_index] <- rgb(0, 0, 0, 0.8)
+  #       bold[NA_index] <- 1
+  #       par(mar=c(0, 0, 0, 0))
+  #       plot(-10, -10, col="white", xlim=c(0.5, 12.5), ylim=c(1, 3))
+  #       text(1:12, rep(2, 12), month_lab, cex=1.6, font = bold, col = month_col)
+  #     }else{
+  #       par(mar=c(4, 4.5, 3, 1))
+  #       plot(1:1, col="white", xlim=c(0, 10), ylim=c(0, 10), xaxt="n", yaxt="n", xlab=" ", ylab=" ", bty="n")
+  #       text(4, 5, "Option not run", cex=2, adj=c(0.5, 0.5))
+  #       box(which="outer")
+  #     }
+  #   }
+  # })
+  # })
+  
   observeEvent(input$run, {output$plot2 <- renderPlot({
     if(!is.null(CRM_fun()$monthCollsnReps_opt1)){
       if(sum(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][1]]][[1]], na.rm=TRUE)>0){
@@ -519,39 +616,54 @@ server <- function(input, output, session) {
           pad_min <- 0
           pad_max <- 0
         }
-        layout(matrix(c(1, 1, 1, 1, 1, 1, 1, 1, 1, 2), 10, 1))
-        par(mar=c(5, 2, 4, 2))
+        # layout(matrix(c(1, 1, 1, 1, 1, 1, 1, 1, 1, 2), 10, 1))
+        # par(mar=c(5, 2, 4, 2))
         if(length(which(SpeciesLabels[,1] == CRM_fun()[['CRSpecies']][1]))>0){
           main_label <- SpeciesLabels[SpeciesLabels[,1] == CRM_fun()[['CRSpecies']][1], 2]
         }else{
           main_label <- CRM_fun()[['CRSpecies']][1]
         }
-        hist(outvector, freq=FALSE, main = main_label, xlab=" ", ylab=" ", bty="n",
-             xlim=c(xmin - pad_min, xmax + pad_max), xaxt="n", breaks=brks, border = "white", col="dark green", #rgb(175/255, 122/255, 197/255, 0.8),
-             cex.axis=1.5, cex.main=1.7, yaxt="n")
-        mtext(side=1, line=2.8, "Total collisions over months highlighted below")
-        box(which="outer")
-        if(max(outvector) >= 10){
-          ticks <- round(c((xmin - pad_min), ((xmin - pad_min) +(1*steps)), ((xmin - pad_min) + (2*steps)), ((xmin - pad_min) +(3*steps)), (xmax + pad_max)), digits=1)
-          axis(side=1, at = ticks, cex.axis=1.5)
-        }
-        if(max(outvector) <= 2&max(outvector) > 1){
-          axis(side=1, labels = c(0, 0.4, 0.8, 1.2, 1.6, 2), at = c(0, 0.4, 0.8, 1.2, 1.6, 2)+0.1, cex.axis=1.5)
-        }
-        if(max(outvector) <= 1){
-          axis(side=1, labels = c(0, 0.2, 0.4, 0.6, 0.8, 1), at = c(0, 0.2, 0.4, 0.6, 0.8, 1)+0.05, cex.axis=1.5)
-        }
-        if(max(outvector) < 10&max(outvector) > 2){
-          axis(side=1, labels = c(0, 2, 4, 6, 8, 10), at = c(0, 2, 4, 6, 8, 10)+0.5, cex.axis=1.5)
-        }
-        polygon(x=c(input$inputthreshold, 0, 0, input$inputthreshold), y=c(0, 0, 1, 1), col=rgb(1, 1, 1, 0.65), border=rgb(0, 0, 0, 0))
+
+        
+        # hist(outvector, freq=FALSE, main = main_label, xlab=" ", ylab=" ", bty="n",
+        #      xlim=c(xmin - pad_min, xmax + pad_max), xaxt="n", breaks=brks, border = "white", col="dark green", #rgb(175/255, 122/255, 197/255, 0.8),
+        #      cex.axis=1.5, cex.main=1.7, yaxt="n")
+        # mtext(side=1, line=2.8, "Total collisions over months highlighted below")
+        # box(which="outer")
+        # if(max(outvector) >= 10){
+        #   ticks <- round(c((xmin - pad_min), ((xmin - pad_min) +(1*steps)), ((xmin - pad_min) + (2*steps)), ((xmin - pad_min) +(3*steps)), (xmax + pad_max)), digits=1)
+        #   axis(side=1, at = ticks, cex.axis=1.5)
+        # }
+        # if(max(outvector) <= 2&max(outvector) > 1){
+        #   axis(side=1, labels = c(0, 0.4, 0.8, 1.2, 1.6, 2), at = c(0, 0.4, 0.8, 1.2, 1.6, 2)+0.1, cex.axis=1.5)
+        # }
+        # if(max(outvector) <= 1){
+        #   axis(side=1, labels = c(0, 0.2, 0.4, 0.6, 0.8, 1), at = c(0, 0.2, 0.4, 0.6, 0.8, 1)+0.05, cex.axis=1.5)
+        # }
+        # if(max(outvector) < 10&max(outvector) > 2){
+        #   axis(side=1, labels = c(0, 2, 4, 6, 8, 10), at = c(0, 2, 4, 6, 8, 10)+0.5, cex.axis=1.5)
+        # }
+        # polygon(x=c(input$inputthreshold, 0, 0, input$inputthreshold), y=c(0, 0, 1, 1), col=rgb(1, 1, 1, 0.65), border=rgb(0, 0, 0, 0))
         bold <- rep(2, 12)
         month_col <- rep("dark blue", 12)
         month_col[NA_index] <- rgb(0, 0, 0, 0.8)
         bold[NA_index] <- 1
-        par(mar=c(0, 0, 0, 0))
-        plot(-10, -10, col="white", xlim=c(0.5, 12.5), ylim=c(1, 3))
-        text(1:12, rep(2, 12), month_lab, cex=1.6, font = bold, col = month_col)
+        # par(mar=c(0, 0, 0, 0))
+        # plot(-10, -10, col="white", xlim=c(0.5, 12.5), ylim=c(1, 3))
+        p1 <- ggplot2::ggplot(data.frame(outvector=outvector), aes(outvector)) + 
+          # stat_bin(breaks = brks, col="dark green") +
+          stat_bin(bins=10, col="dark green") +
+          
+          ggtitle(main_label) +
+          xlim(c(xmin, xmax)) +
+          xlab("Total collisions over months highlighted below") +
+          # annotate("text", x = 1:12, y = -2, label = month_lab, col = month_col) +
+          theme_light()
+        
+        cowplot::ggdraw(cowplot::add_sub(p1, label = month_lab, x= seq(0.1,0.9,0.8/11), color = month_col, size = 12))
+        
+        # text(1:12, rep(2, 12), month_lab, cex=1.6, font = bold, col = month_col)
+        
       }else{
         par(mar=c(4, 4.5, 3, 1))
         plot(1:1, col="white", xlim=c(0, 10), ylim=c(0, 10), xaxt="n", yaxt="n", xlab=" ", ylab=" ", bty="n")
@@ -654,7 +766,7 @@ server <- function(input, output, session) {
   #render the wind farm data to the tables on the wind farm data tab
   output$wind_farm_data1 <- DT::renderDataTable(
     wind_farm_df() %>%
-      select(Run, 2:6, -contains("Op")),
+      dplyr::select(Run, 2:6, -contains("Op")),
     options = list(
       dom = 't',
       scrollX = TRUE
@@ -662,7 +774,7 @@ server <- function(input, output, session) {
   
   output$wind_farm_data2 <- DT::renderDataTable(
     wind_farm_df() %>%
-      select(Run, 7:10, -contains("Op")),
+      dplyr::select(Run, 7:10, -contains("Op")),
     options = list(
       dom = 't',
       scrollX = TRUE
@@ -670,7 +782,7 @@ server <- function(input, output, session) {
   
   output$wind_farm_data3 <- DT::renderDataTable(
     wind_farm_df() %>%
-      select(Run, 11:17, -contains("Op")),
+      dplyr::select(Run, 11:17, -contains("Op")),
     options = list(
       dom = 't',
       scrollX = TRUE
@@ -686,9 +798,11 @@ server <- function(input, output, session) {
     # shadowAnchorX = 4, shadowAnchorY = 62
   )
     
+  qpal <- colorQuantile("YlOrRd", Red_Knot_monthly_prob_BOEM_half_deg$mean, n = 8)
+  
   #render the map with the lat/longs given in the study area map panel
   output$studymap <- renderLeaflet({
-    studymap <- leaflet(options = leafletOptions(preferCanvas = T, tolerance = 1)) %>%
+    leaflet(options = leafletOptions(preferCanvas = T, tolerance = 1)) %>%
       addEsriBasemapLayer(esriBasemapLayers$Oceans, autoLabels = TRUE) %>% 
       addEsriFeatureLayer(
         #add BOEM renewable lease areas as a WFS
@@ -729,15 +843,32 @@ server <- function(input, output, session) {
           ),
         group = "Wind farm"
       ) %>%
+      addPolygons(data=Red_Knot_monthly_prob_BOEM_half_deg, weight = 1, opacity = 0.75,
+                  color = ~qpal(mean),
+                  highlightOptions = highlightOptions(color = "white", weight = 2), group="Occur. Prob.") %>%
+      # addPolygons(data=Piping_Plover_monthly_prob_BOEM_half_deg, weight = 1, opacity = 1,
+      #             fillColor = ~colorQuantile("YlOrRd", Piping_Plover_monthly_prob_BOEM_half_deg$mean, n = 8),
+      #             highlightOptions = highlightOptions(color = "white", weight = 2), group="Occur. Prob.") %>%
+      # addPolygons(data=Roseate_Tern_monthly_prob_BOEM_half_deg, weight = 1, opacity = 1,
+      #             fillColor = ~colorQuantile("YlOrRd", Roseate_Tern_monthly_prob_BOEM_half_deg$mean, n = 8),
+      #             highlightOptions = highlightOptions(color = "white", weight = 2), group="Occur. Prob.") %>%
       setView(lat = mean(wind_farm_df()$Latitude), lng = mean(wind_farm_df()$Longitude), zoom = 6) %>%
       #Layers control
       addLayersControl(
-        overlayGroups = c("Wind farm", "BOEM wind leases", "BOEM wind planning areas"),
+        overlayGroups = c("Wind farm", "BOEM wind leases", "BOEM wind planning areas", "Occur. Prob."),
         position = "topright", #"topleft",
         options = layersControlOptions(collapsed = TRUE)
       )
   })
   
+  #add appropriate species model output to map in leaflet when species chosen
+  # observeEvent(input$species_input, {
+  #   species <- isolate(input$species_input)
+  #   spp_move_data <- get(paste0(species, "_monthly_prob_BOEM_half_deg"))
+  # leafletProxy("studymap", data=spp_move_data) %>%
+  #   leaflet::addPolygons(weight = 1, color = "#444444", opacity = 1)
+  # })
+
 #show the Wind Farm operational data as as table for QA/QC
   output$ops_data <-
     DT::renderDataTable(
@@ -747,19 +878,19 @@ server <- function(input, output, session) {
           # run <- row[["run"]]
           row <- wind_farm_df()[i,]
           ops_data <- row %>% 
-            mutate(Var="MonthOp", Desc="Wind availability (maximum amount of time turbines can be operational/month)") %>% 
-            select(Run, Var, Desc, matches("Op$")) %>% 
-            rename_with(~ gsub("Op", "", .x)) #rename to month only  
+            dplyr::mutate(Var="MonthOp", Desc="Wind availability (maximum amount of time turbines can be operational/month)") %>% 
+            dplyr::select(Run, Var, Desc, matches("Op$")) %>% 
+            dplyr::rename_with(~ gsub("Op", "", .x)) #rename to month only  
           
           ops_mean_data <- row %>% 
-            mutate(Var="MonthOpMean", Desc='Mean time that turbines will not be operational ("Down time").') %>% 
-            select(Run, Var, Desc, matches("Mean$")) %>% 
-            rename_with(~ gsub("OpMean", "", .x)) #rename to month only  
+            dplyr::mutate(Var="MonthOpMean", Desc='Mean time that turbines will not be operational ("Down time").') %>% 
+            dplyr::select(Run, Var, Desc, matches("Mean$")) %>% 
+            dplyr::rename_with(~ gsub("OpMean", "", .x)) #rename to month only  
           
           ops_SD_data <- row %>% 
-            mutate(Var="MonthOpSD", Desc="deviation of mean operational time") %>% 
-            select(Run, Var, Desc, matches("OPSD$")) %>% 
-            rename_with(~ gsub("OpSD", "", .x))
+            dplyr::mutate(Var="MonthOpSD", Desc="deviation of mean operational time") %>% 
+            dplyr::select(Run, Var, Desc, matches("OPSD$")) %>% 
+            dplyr::rename_with(~ gsub("OpSD", "", .x))
           
           # ops_data_run <- rbind(ops_data, ops_mean_data, ops_SD_data)
           ops_data_all <- rbind(ops_data_all, ops_data, ops_mean_data, ops_SD_data)
@@ -769,7 +900,6 @@ server <- function(input, output, session) {
         options = list(rownames = FALSE, pagelength=20, dom = 't')
         )
       )
-  
 
   # data for species characteristics
   tablereact3 <- reactiveValues()
@@ -790,7 +920,6 @@ server <- function(input, output, session) {
     }
   })
   
-  species_data_react <- reactiveValues()
   species_data_react <- eventReactive(c(input$file_spp_param, input$species_input), {
     if(!is.null(input$file_spp_param)){
     }else{
@@ -807,6 +936,7 @@ server <- function(input, output, session) {
     DT::renderDataTable(
       datatable(
         species_data_react(),
+        # tablereact3(),
         selection = list(mode = "single", selected = 1),
         options = list(
           paging = FALSE,
@@ -839,25 +969,28 @@ server <- function(input, output, session) {
     }
   })
   
-  flt_ht_data_react <- reactiveValues()
+  #Summary table of flight height data for plotting and tables
+  #  Created these for default/included data to speed up process, and otherwise summarize loaded flight height data
   flt_ht_data_react <- eventReactive(c(input$file_spp_param, input$species_input), {
     if(!is.null(input$file_spp_param)){
-    }else{
-      flt_ht_boot_table <- read.csv(paste0("data/", input$species_input,"_ht_dflt.csv"), header = T)
+      flt_ht_boot_table <- tablereact5()[[1]]
       n_cols <- ncol(flt_ht_boot_table)
       #summarize across all boot samples
       flt_ht_summary <- flt_ht_boot_table %>%
-        group_by(Height_m) %>%
-        rowwise() %>% 
-        summarise(mean_prop = mean(c_across(3:n_cols-1)), min_prop = min(c_across(3:n_cols-1)), max_prop = max(c_across(3:n_cols-1)))
+        dplyr::group_by(Height_m) %>%
+        dplyr::rowwise() %>%
+        dplyr::summarise(mean_prop = mean(c_across(3:n_cols-1)), min_prop = min(c_across(3:n_cols-1)), max_prop = max(c_across(3:n_cols-1)))
+    } else {
+      #return  pre-rendered flt height summaries depending on species
+      load(file=paste0("data/", input$species_input, "_ht_dflt_summary.RData"))
     }
     return(flt_ht_summary)
   })
-  
+
+  #output table showing the min, max, mean flight heights from the bootstrap tables
   output$flt_ht_data <-
-    DT::renderDataTable(
+      DT::renderDataTable(
       datatable(
-        # flt_ht_data_react()[,2:10],
         flt_ht_data_react(),
         selection = list(mode = "single", selected = 1),
         options = list(
@@ -867,8 +1000,8 @@ server <- function(input, output, session) {
         )
       )
     )
-  
-#flight height data plot
+
+  #flight height data plot
   output$flt_ht_plot <- renderPlot({
     ggplot(flt_ht_data_react()) +
       geom_pointrange(aes(x = Height_m, y = mean_prop, ymin = min_prop, ymax = max_prop)) +
@@ -877,9 +1010,9 @@ server <- function(input, output, session) {
       ylab("Proportion") +
       coord_flip() +
       theme_bw()
-    
+
   })
-  
+
   # count data
   tablereact7 <- reactiveValues()
   tablereact7 <- eventReactive(c(input$file_spp_param, input$species_input), {
@@ -922,6 +1055,7 @@ server <- function(input, output, session) {
     lapply(1:length(speciesreact()), function(x) read.csv(paste("data/MovementData_", speciesreact()[x],".csv", sep=''), header = T))
     #  }
   })
+
   # indicator to let app know whether to use user-provided passage rate data (1) or built-in movement data (0)
   tablereact11 <- reactiveValues()
   tablereact11 <- eventReactive(c(input$file_spp_param, input$file_wf_param), {
@@ -952,10 +1086,12 @@ server <- function(input, output, session) {
     loc_match[1] <- 1
     #}
     #if(!is.null(react_latlon()[1])){
+    #distance matching to cell in movement data for exctracting data from that cell
     if(react_latlon()[1] != -9){
       loc_match_dists <- lapply(1:length(cell_match[ ,'lat']), function(x) sqrt((cell_match[x ,'lat'] -
                                                                                    turb_tab[1, "Latitude"])^2 +
                                                                                   (cell_match[x ,'lon'] - turb_tab[1, "Longitude"])^2))
+      #loc_match[2] appears to apply to the FID column which starts with 0
       loc_match[2] <- which(unlist(loc_match_dists) == min(unlist(loc_match_dists)))[1]
       loc_match[3] <- cell_match[which(unlist(loc_match_dists) == min(unlist(loc_match_dists)))[1],'area']
     }
@@ -1098,7 +1234,6 @@ server <- function(input, output, session) {
     if(running())
       return(NULL)
     running(TRUE)
-    #if(TRUE){
     movement_type2 <- movement_type()
     speciesreact2 <- speciesreact()
     radioreact2 <- radioreact()
@@ -1110,6 +1245,25 @@ server <- function(input, output, session) {
     tablereact12 <- tablereact11()
     sliderreact2 <- sliderreact()
     progress <- AsyncProgress$new(message="Simulating collision risk")
+    # browser()
+    # ATG - can't debug using the future promise language - R Studio will not let
+    # you step through the code. Revert to fut <- future to return to CF code
+    # CRM_fun() <-   stochasticBand(
+    #     results_folder = "results",
+    #     BirdData = tablereact4,
+    #     TurbineData = tablereact2,
+    #     CountData = tablereact8,
+    #     movement_type = movement_type2,
+    #     FlightData = tablereact6,
+    #     iter = sliderreact2,
+    #     CRSpecies = speciesreact2,
+    #     LargeArrayCorrection = "yes",
+    #     Options_select = radioreact2,
+    #     progress = progress,
+    #     interruptor = interruptor,
+    #     survey_data = tablereact12,
+    #     runlocal = FALSE
+    #   )
     CRM_fun(NULL)
     fut <- future({
       stochasticBand(
@@ -1142,7 +1296,6 @@ server <- function(input, output, session) {
       # output$study_design_report_txt <- renderPrint(CRM_fun())
       updateTabItems(session, inputId = "tabsetpan", selected = "crm_results")
     })
-    #}
     NULL
   })
 
@@ -1365,7 +1518,7 @@ server <- function(input, output, session) {
   # download handler for raw results download
   output$downloadDataRaw <-
     downloadHandler(
-      filename = paste0('SCRAM_CRM_model_output_', strftime(Sys.time(), "%Y%m%d_%H%M%S"),'.zip'),
+      filename = paste0('SCRAM_model_output_', strftime(Sys.time(), "%Y%m%d_%H%M%S"),'.zip'),
       content = function(fname) {
         tmpdir = tempdir()
         fnames4zip1 <- list()
@@ -1385,8 +1538,8 @@ server <- function(input, output, session) {
           }}
         fnames4zip4 <- list()
         params <- list(iterations = input$slider1, model_output = CRM_fun(), threshold = input$inputthreshold, option = input$optionradio, species_labels = SpeciesLabels)
-        save(params, file = file.path(tmpdir, paste0('SCRAM_CRM_model_output_', strftime(Sys.time(), "%Y%m%d_%H%M%S"),'.RData'))) 
-        fnames4zip4 <- c(fnames4zip4, file.path(tmpdir, paste0('SCRAM_CRM_model_output_', strftime(Sys.time(), "%Y%m%d_%H%M%S"),'.RData')))
+        save(params, file = file.path(tmpdir, paste0('SCRAM_model_output_', strftime(Sys.time(), "%Y%m%d_%H%M%S"),'.RData'))) 
+        fnames4zip4 <- c(fnames4zip4, file.path(tmpdir, paste0('SCRAM_model_output_', strftime(Sys.time(), "%Y%m%d_%H%M%S"),'.RData')))
         
         utils::zip(zipfile=fname, files=unlist(c(fnames4zip1, fnames4zip2, fnames4zip3, fnames4zip4)), flags = "-r9Xj")
         #if(file.exists(paste0(fname, ".zip"))) {file.rename(paste0(fname, ".zip"), fname)}
