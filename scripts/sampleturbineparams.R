@@ -71,11 +71,18 @@ for(currentMonth in monthLabels){
     workingVect <- sampleOp(iter, workingMean, workingSD) 
     
     ### === BC BUG FIXING === ### workingOp needs to be converted from a data.frame otherwise it doesn't return the vector of differences (only the 1st difference)
-    sampledTurbine[, grep(currentMonth, names(sampledTurbine))] <- workingOp*(100 - workingVect)
+    #ATG - original from CF was workingOp*(100 - workingVect) which yielded a percentage squared which is further divided by 100 only later in band model code
+    #fixed to reflect multiplying proportions
+    # sampledTurbine[, grep(currentMonth, names(sampledTurbine))] <- workingOp*(100 - workingVect) Old CF Code
+    sampledTurbine[, grep(currentMonth, names(sampledTurbine))] <- (workingOp/100*(1 - workingVect/100))*100
     
     # will explicitly rep mean, although not needed as filling into the DF
     ### === BC BUG FIXING === ### workingOp needs to be converted from a data.frame (see above)
-  } else {sampledTurbine[, grep(currentMonth, names(sampledTurbine))] <- workingOp}*(100 - rep(workingMean, iter))
+  # } else {sampledTurbine[, grep(currentMonth, names(sampledTurbine))] <- workingOp}*(100 - rep(workingMean, iter)) old CF code
+    #ATG -  also the } was in the wrong place below when SD missing
+  } else {
+    sampledTurbine[, grep(currentMonth, names(sampledTurbine))] <- (workingOp/100*(1 - rep(workingMean/100, iter)))*100
+    }
 }
 
 
