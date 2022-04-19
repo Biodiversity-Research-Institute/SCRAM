@@ -335,13 +335,13 @@ ui <- dashboardPage(
                    )
                    )),
                fluidRow(
-                 column(6,
+                 column(9,
                         h4("Output dashboard"), 
                         br(),
-                        plotOutput("plot2", height = "300px", width = "460px")
+                        plotOutput("results_plot", "400px", width = "560px")
                  ), 
                  #buttons for sensitivity Analysis, sownloading output, and generating report
-                 column(6,
+                 column(3,
                         h4("Next steps:"), 
                         br(),
                         uiOutput("runGSA2"), 
@@ -460,28 +460,11 @@ server <- function(input, output, session) {
     })
   })
 
-  # # load and render the GitHub logo
-  # output$myImage <- renderImage({
-  #   list(src = "data/GitHub-Mark.png",
-  #        contentType = 'image/png',
-  #        width = 40,
-  #        height = 40,
-  #        alt = " ")
-  # }, deleteFile = FALSE)
-  # 
-  # output$myImageHeader <- renderImage({
-  #   list(src = "data/collider_header_bw.png",
-  #        contentType = 'image/png',
-  #        width = 625,
-  #        height = 75,
-  #        alt = " ")
-  # }, deleteFile = FALSE)
-
   # load labels to display versions of species names without underscores
   SpeciesLabels <- read.table("data/SpeciesLabels.csv", sep =",")
 
   # main plot for annual collisions
-  # observeEvent(input$run, {output$plot2 <- renderPlot({
+  # observeEvent(input$run, {output$results_plot <- renderPlot({
   #   if(!is.null(CRM_fun()$monthCollsnReps_opt1)){
   #     if(sum(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][1]]][[1]], na.rm=TRUE)>0){
   #       NA_index <- which(is.na(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][1]]][[1]][1,]))
@@ -570,100 +553,60 @@ server <- function(input, output, session) {
   # })
   # })
   
-  observeEvent(input$run, {output$plot2 <- renderPlot({
+  observeEvent(input$run, {output$results_plot <- renderPlot({
     if(!is.null(CRM_fun()$monthCollsnReps_opt1)){
       if(sum(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][1]]][[1]], na.rm=TRUE)>0){
         NA_index <- which(is.na(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][1]]][[1]][1,]))
         outvector <- round(rowSums(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][1]]][[1]], na.rm = TRUE))
         month_lab <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-        if(max(outvector) >= 1000){
-          xmin <- round(min(outvector, na.rm=TRUE))
-          xmax <- round(max(outvector, na.rm=TRUE))
-          bin_wd <- round(max(outvector)/10)
-          brks <- seq(xmin, xmax+bin_wd, by=bin_wd)
-          pad_min <- round(xmin*0.1)
-          pad_max <- round(xmax*0.1)
-          steps <- round(((xmax + pad_max) - (xmin - pad_min))/4)
+        
+        xmin <- round(min(outvector, na.rm=TRUE))
+        xmax <- round(max(outvector, na.rm=TRUE))
+        print(paste("outvector",outvector))
+        print(paste(xmin, xmax))
+        if (sum(outvector)==0){
+          #no collisions provide a modified figure
+          no_coll = T
+          plot_xmin = 0
+          plot_xmax = 10
+          plot_ymin = 0
+          plot_ymax = 10
+          x_ann = 5
+          y_ann = 5
+          fig_text = "No collisions predicted"
+          
+        } else {
+          plot_xmin = xmin
+          plot_xmax = xmax
+          plot_ymin = 0
+          plot_ymax = NA
+          x_ann = 0
+          y_ann = 0
+          fig_text = ""
         }
-        if(max(outvector) >= 10&max(outvector) < 1000){
-          xmin <- round(min(outvector, na.rm=TRUE))
-          xmax <- round(max(outvector, na.rm=TRUE))
-          bin_wd <- round(max(outvector)/10)
-          brks <- seq(xmin, xmax+bin_wd, by=bin_wd)
-          #brks <- seq(xmin, xmax, by=1)
-          pad_min <- round(xmin*0.1)
-          pad_max <- round(xmax*0.1)
-          steps <- round(((xmax + pad_max) - (xmin - pad_min))/4)
-        }
-        if(max(outvector) <= 2&max(outvector)>1){
-          xmin <- 0
-          xmax <- 2.1
-          brks <- seq(0, 2, by=0.2)
-          pad_min <- 0
-          pad_max <- 0
-        }
-        if(max(outvector) <= 1){
-          xmin <- 0
-          xmax <- 1.1
-          brks <- seq(0, 1, by=0.1)
-          pad_min <- 0
-          pad_max <- 0
-        }
-        if(max(outvector) < 10&max(outvector) > 2){
-          xmin <- 0
-          xmax <- 10.5
-          brks <- seq(0, 10, by=1)
-          pad_min <- 0
-          pad_max <- 0
-        }
-        # layout(matrix(c(1, 1, 1, 1, 1, 1, 1, 1, 1, 2), 10, 1))
-        # par(mar=c(5, 2, 4, 2))
+          
         if(length(which(SpeciesLabels[,1] == CRM_fun()[['CRSpecies']][1]))>0){
           main_label <- SpeciesLabels[SpeciesLabels[,1] == CRM_fun()[['CRSpecies']][1], 2]
         }else{
           main_label <- CRM_fun()[['CRSpecies']][1]
         }
-
         
-        # hist(outvector, freq=FALSE, main = main_label, xlab=" ", ylab=" ", bty="n",
-        #      xlim=c(xmin - pad_min, xmax + pad_max), xaxt="n", breaks=brks, border = "white", col="dark green", #rgb(175/255, 122/255, 197/255, 0.8),
-        #      cex.axis=1.5, cex.main=1.7, yaxt="n")
-        # mtext(side=1, line=2.8, "Total collisions over months highlighted below")
-        # box(which="outer")
-        # if(max(outvector) >= 10){
-        #   ticks <- round(c((xmin - pad_min), ((xmin - pad_min) +(1*steps)), ((xmin - pad_min) + (2*steps)), ((xmin - pad_min) +(3*steps)), (xmax + pad_max)), digits=1)
-        #   axis(side=1, at = ticks, cex.axis=1.5)
-        # }
-        # if(max(outvector) <= 2&max(outvector) > 1){
-        #   axis(side=1, labels = c(0, 0.4, 0.8, 1.2, 1.6, 2), at = c(0, 0.4, 0.8, 1.2, 1.6, 2)+0.1, cex.axis=1.5)
-        # }
-        # if(max(outvector) <= 1){
-        #   axis(side=1, labels = c(0, 0.2, 0.4, 0.6, 0.8, 1), at = c(0, 0.2, 0.4, 0.6, 0.8, 1)+0.05, cex.axis=1.5)
-        # }
-        # if(max(outvector) < 10&max(outvector) > 2){
-        #   axis(side=1, labels = c(0, 2, 4, 6, 8, 10), at = c(0, 2, 4, 6, 8, 10)+0.5, cex.axis=1.5)
-        # }
-        # polygon(x=c(input$inputthreshold, 0, 0, input$inputthreshold), y=c(0, 0, 1, 1), col=rgb(1, 1, 1, 0.65), border=rgb(0, 0, 0, 0))
         bold <- rep(2, 12)
         month_col <- rep("dark blue", 12)
         month_col[NA_index] <- rgb(0, 0, 0, 0.8)
-        bold[NA_index] <- 1
-        # par(mar=c(0, 0, 0, 0))
-        # plot(-10, -10, col="white", xlim=c(0.5, 12.5), ylim=c(1, 3))
+        bold[NA_index] <- 1 # make bold those months with data
         p1 <- ggplot2::ggplot(data.frame(outvector=outvector), aes(outvector)) + 
-          # stat_bin(breaks = brks, col="dark green") +
-          stat_bin(bins=10, col="dark green") +
-          
+          stat_bin(bins=10, col="darkgreen", fill="darkgreen") +
           ggtitle(main_label) +
-          xlim(c(xmin, xmax)) +
+          xlim(c(plot_xmin, plot_xmax)) +
+          ylim(c(plot_ymin, plot_ymax)) +
           xlab("Total collisions over months highlighted below") +
-          # annotate("text", x = 1:12, y = -2, label = month_lab, col = month_col) +
-          theme_light()
+          annotate("text", x=x_ann, y=y_ann, label = fig_text) +
+          theme_light() + 
+          theme(axis.title.y = element_blank())
         
-        cowplot::ggdraw(cowplot::add_sub(p1, label = month_lab, x= seq(0.1,0.9,0.8/11), color = month_col, size = 12))
-        
-        # text(1:12, rep(2, 12), month_lab, cex=1.6, font = bold, col = month_col)
-        
+        cowplot::ggdraw(cowplot::add_sub(p1, label = month_lab, x= seq(0.1,0.9,0.8/11), color = month_col, size = 10, fontface = bold))
+      
       }else{
         par(mar=c(4, 4.5, 3, 1))
         plot(1:1, col="white", xlim=c(0, 10), ylim=c(0, 10), xaxt="n", yaxt="n", xlab=" ", ylab=" ", bty="n")
@@ -727,13 +670,14 @@ server <- function(input, output, session) {
   # create reactive objects to be used in the main risk computation script, with the ability to update with user inputs
   # species input
   speciesreact <- reactiveValues()
-  speciesreact <- eventReactive(c(input$species_input,input$file_spp_param$datapath), {if(length(which(input$species_input=="Other"))==0){
-    input$species_input
-  }else{
-    suppressWarnings(read.table(input$file_spp_param[[which(
-      sapply(1:length(input$file_spp_param$datapath), function(x) length(suppressWarnings(read.table(input$file_spp_param[[x,"datapath"]], header=TRUE, sep = ","))[1,]))
-      == 10)[1],"datapath"]], header=TRUE, sep = ","))[,1]
-  }
+  speciesreact <- eventReactive(c(input$species_input,input$file_spp_param$datapath), {
+    if(length(which(input$species_input=="Other"))==0){
+      input$species_input
+    }else{
+      suppressWarnings(read.table(input$file_spp_param[[which(
+        sapply(1:length(input$file_spp_param$datapath), function(x) length(suppressWarnings(read.table(input$file_spp_param[[x,"datapath"]], header=TRUE, sep = ","))[1,]))
+        == 10)[1],"datapath"]], header=TRUE, sep = ","))[,1]
+    }
   })
   # an object that indexes whether at least one file has been uploaded for both species and turbine data
   bothdataup <- reactiveVal()
@@ -797,8 +741,30 @@ server <- function(input, output, session) {
     # shadowWidth = 50, shadowHeight = 64,
     # shadowAnchorX = 4, shadowAnchorY = 62
   )
-    
-  qpal <- colorQuantile("YlOrRd", Red_Knot_monthly_prob_BOEM_half_deg$mean, n = 8)
+  
+  #add appropriate species model output to map in leaflet when species chosen
+  #create the color palette functions for coloring
+  spp_move_data <- reactiveVal()
+  spp_move_data <- eventReactive(input$species_input, {
+    species <- isolate(input$species_input)
+    get(paste0(species, "_monthly_prob_BOEM_half_deg"))
+  })
+  meanpal <- reactiveVal()
+  meanpal <- eventReactive(input$species_input, {
+    #issue with zero inflated bins - need to generate non-zero quants
+    non_zero_mean <- spp_move_data()$mean[spp_move_data()$mean>0]
+    mean_bins <- c(0, quantile(non_zero_mean, probs=seq(0,1,1/8)))
+    print(mean_bins)
+    colorBin("YlOrRd", spp_move_data()$mean, bins = mean_bins)
+  })
+  CIpal <- reactiveVal()
+  CIpal <- eventReactive(input$species_input, {
+    #issue with zero inflated bins - need to generate non-zero quants
+    non_zero_CIrange <- spp_move_data()$CI_range[spp_move_data()$CI_range>0]
+    CI_bins <- c(0, quantile(non_zero_CIrange, probs=seq(0,1,1/8)))
+    print(CI_bins)
+    colorBin("Purples", spp_move_data()$CI_range, bins = CI_bins)
+  })
   
   #render the map with the lat/longs given in the study area map panel
   output$studymap <- renderLeaflet({
@@ -843,31 +809,22 @@ server <- function(input, output, session) {
           ),
         group = "Wind farm"
       ) %>%
-      addPolygons(data=Red_Knot_monthly_prob_BOEM_half_deg, weight = 1, opacity = 0.75,
-                  color = ~qpal(mean),
-                  highlightOptions = highlightOptions(color = "white", weight = 2), group="Occur. Prob.") %>%
-      # addPolygons(data=Piping_Plover_monthly_prob_BOEM_half_deg, weight = 1, opacity = 1,
-      #             fillColor = ~colorQuantile("YlOrRd", Piping_Plover_monthly_prob_BOEM_half_deg$mean, n = 8),
-      #             highlightOptions = highlightOptions(color = "white", weight = 2), group="Occur. Prob.") %>%
-      # addPolygons(data=Roseate_Tern_monthly_prob_BOEM_half_deg, weight = 1, opacity = 1,
-      #             fillColor = ~colorQuantile("YlOrRd", Roseate_Tern_monthly_prob_BOEM_half_deg$mean, n = 8),
-      #             highlightOptions = highlightOptions(color = "white", weight = 2), group="Occur. Prob.") %>%
+      addPolygons(data=spp_move_data(), weight = 1, opacity = 0.75,
+                  color = ~meanpal()(mean),
+                  highlightOptions = highlightOptions(color = "white", weight = 2), group="Occur. prob.") %>%
+      addPolygons(data=spp_move_data(), weight = 1, opacity = 0.75,
+                  color = ~CIpal()(CI_range),
+                  highlightOptions = highlightOptions(color = "white", weight = 2), group="CI range") %>%
       setView(lat = mean(wind_farm_df()$Latitude), lng = mean(wind_farm_df()$Longitude), zoom = 6) %>%
       #Layers control
       addLayersControl(
-        overlayGroups = c("Wind farm", "BOEM wind leases", "BOEM wind planning areas", "Occur. Prob."),
+        overlayGroups = c("Wind farm", "BOEM wind leases", "BOEM wind planning areas", "Occur. prob.", "CI range"),
         position = "topright", #"topleft",
         options = layersControlOptions(collapsed = TRUE)
       )
   })
   
-  #add appropriate species model output to map in leaflet when species chosen
-  # observeEvent(input$species_input, {
-  #   species <- isolate(input$species_input)
-  #   spp_move_data <- get(paste0(species, "_monthly_prob_BOEM_half_deg"))
-  # leafletProxy("studymap", data=spp_move_data) %>%
-  #   leaflet::addPolygons(weight = 1, color = "#444444", opacity = 1)
-  # })
+
 
 #show the Wind Farm operational data as as table for QA/QC
   output$ops_data <-
@@ -1245,7 +1202,7 @@ server <- function(input, output, session) {
     tablereact12 <- tablereact11()
     sliderreact2 <- sliderreact()
     progress <- AsyncProgress$new(message="Simulating collision risk")
-    # browser()
+    
     # ATG - can't debug using the future promise language - R Studio will not let
     # you step through the code. Revert to fut <- future to return to CF code
     # CRM_fun() <-   stochasticBand(
@@ -1264,6 +1221,7 @@ server <- function(input, output, session) {
     #     survey_data = tablereact12,
     #     runlocal = FALSE
     #   )
+    
     CRM_fun(NULL)
     fut <- future({
       stochasticBand(
