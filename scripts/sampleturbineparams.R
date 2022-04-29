@@ -3,9 +3,18 @@
   
 # Radius  -----------------------------------------------------------------
 # Modified 22 Feb 2022 by ATG to add turbine units for clarity
+# 27 April 22 - added in wind speed data
 
 if(!is.na(TurbineData$RotorRadiusSD[t])){
   sampledTurbine$RotorRadius_m <- sampleRotorRadius(iter, TurbineData$RotorRadius_m[t], TurbineData$RotorRadiusSD_m[t])
+} else {
+  sampledTurbine$RotorRadius_m <- rep(TurbineData$RotorRadius_m[t], iter)
+}
+
+# Wind speed data
+# ATG - missing from data tables from CF - added
+if(!is.na(TurbineData$RotorRadiusSD[t])){
+  sampledTurbine$WindSpeed_mps <- sampleWindSpeed(iter, TurbineData$RotorRadius_m[t], TurbineData$RotorRadiusSD_m[t])
 } else {
   sampledTurbine$RotorRadius_m <- rep(TurbineData$RotorRadius_m[t], iter)
 }
@@ -16,6 +25,11 @@ if(!is.na(TurbineData$RotorRadiusSD[t])){
 # Rotor speed
 #sampledTurbine$RotorSpeed <- sampleRotnSpeed(iter, TurbineData$RotationSpeed[t], TurbineData$RotationSpeedSD[t])
 windSpeedRating <- sampleRotnSpeed(iter, TurbineData$WindSpeed_mps[t], TurbineData$WindSpeedSD_mps[t])
+
+#ATG - added reference below to record to parameters table
+sampledTurbine$WindSpeed_mps <- windSpeedRating
+
+#TODO - check that this is correct below
 # get rotor speed according to diameter
 # 5.5 is the TSR; 60 is for converting radians/s to rpm
 sampledTurbine$RotorSpeed_rpm <-  (5.5*windSpeedRating*60)/(pi*2*sampledTurbine$RotorRadius_m[i])

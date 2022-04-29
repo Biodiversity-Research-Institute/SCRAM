@@ -278,7 +278,10 @@ stochasticBand <- function(
       
       # moved out of t loop to precede day length calculations
       # create data frame for turbine data
-      sampledTurbine <- data.frame(matrix(data = 0, ncol = 18, nrow = iter))
+      # sampledTurbine <- data.frame(matrix(data = 0, ncol = 18, nrow = iter))  
+      # ATG - CF set data to 0s which may be a problem. Set to NA to see if showing up in data down the line
+      sampledTurbine <- data.frame(matrix(data = NA, ncol = 18, nrow = iter))  
+      
       names(sampledTurbine) = c("RotorRadius_m", "HubHeight_m", "BladeWidth_m", "WindSpeed_mps", "RotorSpeed_rpm", "Pitch", 
                                 "JanOp", "FebOp", "MarOp", "AprOp", "MayOp", "JunOp", "JulOp",   
                                 "AugOp", "SepOp", "OctOp", "NovOp", "DecOp")
@@ -484,7 +487,6 @@ stochasticBand <- function(
       sampledParamsBird[[cSpec]][[cTurbModel]] <- sampledBirdParamsIters
       sampledParamsTurbine[[cSpec]][[cTurbModel]] <- sampledTurbineParamsIters
       
-    
     } # end of t over number of turbines
     # End of the turbine loop -------------------------------------------------
     

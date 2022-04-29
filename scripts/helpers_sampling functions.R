@@ -120,6 +120,12 @@ samplePitch <-function(n, meanPitch, sdPitch){
 }
 
 
+#ATG - added wind speed sampling function similar to above - not accounted for otherwise
+sampleWindSpeed <-function(n, meanWindSpeed, sdWindSpeed){
+  rtnorm_dmp(n, mu = meanWindSpeed, sd = sdWindSpeed)
+}
+
+
 # Misc --------------------------------------------------------------------
 #= basic CV in 100%
 CV <- function(mean, sd){

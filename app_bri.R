@@ -16,10 +16,13 @@
 # Modified 06 April 2022 - pre-render movement data for plotting and tables for PIPL, REKN, ROST; prerender summary flt ht for same
 #   Add back probability prediction for exceeding collision threshold
 #   Create probability of occurrence polygons layers for PIPL, REKN, ROST from baked data files for mapping
+# 27 April 22 - recreated output report using DPLYR and ggplot to simplify
 
 
 source("helpers.R")
-
+SCRAM_version = "0.73 - Diervilla"
+# run_start_time = NA
+# run_end_time = NA
 options(shiny.trace = F)
 
 ui <- dashboardPage(
@@ -29,7 +32,7 @@ ui <- dashboardPage(
 
     tags$li(
       class = "dropdown",
-      actionLink("appvrsn", label = tags$b("Stochastic Collision Risk Assessment for Movement: v0.72 - Cornus"), style = "font-size: 19px"),
+      actionLink("appvrsn", label = tags$b(paste("Stochastic Collision Risk Assessment for Movement: v", SCRAM_version), style = "font-size: 16px")),
       style = "float: left"
     ),
     
@@ -38,7 +41,7 @@ ui <- dashboardPage(
       a(
         icon('github', "fa-2x"),
         href = 'https://github.com/Biodiversity-Research-Institute/SCRAM',
-        style = "padding-top: 10px; padding-bottom: 10px",
+        style = "padding-top: 10px; padding-bottom: 10px; padding-left: 5px; padding-right: 5px",
         target = '_blank',
         id = "lbl_codeLink"
       ),
@@ -51,15 +54,19 @@ ui <- dashboardPage(
         icon('bug', "fa-2x"),
         href = 'https://github.com/Biodiversity-Research-Institute/SCRAM/issues',
         #exclamation-circle
-        style = "padding-top: 10px; padding-bottom: 10px",
+        style = "padding-top: 10px; padding-bottom: 10px; padding-left: 5px; padding-right: 5px",
         target = '_blank',
         id = "lbl_issuesLink"
       ),
       style = "float: left"
     ),
 
-    tags$li(class = "dropdown", actionLink("bookmark_btt", label = NULL, icon("bookmark", "fa-2x", lib = "font-awesome"),
-                                           style = "padding-top: 10px; padding-bottom: 10px")),
+    tags$li(class = "dropdown", 
+            actionLink("bookmark_btt", 
+                       label = NULL, 
+                       icon("bookmark", "fa-2x", lib = "font-awesome"),
+                       style = "padding-top: 10px; padding-bottom: 10px; padding-left: 5px; padding-right: 5px",
+    )),
     # tags$li(class = "dropdown", actionLink("saveInputs_btt", label = NULL, icon("save", "fa-2x", lib = "font-awesome"),
     #                                        style = "padding-top: 10px; padding-bottom: 10px")),
     # tags$li(class = "dropdown", actionLink("restoreInputs_btt", label = NULL, icon("window-restore", "fa-2x", lib = "font-awesome"),
@@ -67,7 +74,7 @@ ui <- dashboardPage(
     tags$li(
       class = "dropdown",
       a(
-        img(src = "BRI_color_logo_no_words.png", height = "40px"),
+        img(src = "BRI_color_logo_no_words.png", height = "36px"),
         href = 'https://briwildlife.org',
         style = "padding-top: 5px; padding-bottom: 5px;",
         target = '_blank',
@@ -78,7 +85,7 @@ ui <- dashboardPage(
     tags$li(
       class = "dropdown",
       a(
-        img(src = "URI.png", height = "40px"),
+        img(src = "URI.png", height = "36px"),
         href = 'https://URI.edu',
         style = "padding-top: 5px; padding-bottom: 5px;",
         target = '_blank',
@@ -89,7 +96,7 @@ ui <- dashboardPage(
     tags$li(
       class = "dropdown",
       a(
-        img(src = "USFWS.png", height = "40px"),
+        img(src = "USFWS.png", height = "36px"),
         href = 'https://www.fws.gov/',
         style = "padding-top: 5px; padding-bottom: 5px;",
         target = '_blank',
@@ -100,7 +107,7 @@ ui <- dashboardPage(
     tags$li(
       class = "dropdown",
       a(
-        img(src = "BOEM.png", height = "40px"),
+        img(src = "BOEM.png", height = "36px"),
         href = 'https://www.BOEM.gov',
         style = "padding-top: 5px; padding-bottom: 5px",
         target = '_blank',
@@ -125,27 +132,35 @@ ui <- dashboardPage(
         id = "lbl_SCRAMLogoLink"
       ),
       
-      h4("1) Select the species or load species data:", style = "padding-left: 10px;"),
-
-      ################### Input: Select the species to model
-      radioButtons(inputId = "species_input",
-                   label ="Select included species data or your own:",
-                   choices = c("Piping Plover" = "Piping_Plover", "Red Knot" = "Red_Knot", "Roseate Tern" = "Roseate_Tern", "Use your own species data" = "Other"),
-                   selected = character(0)), #start with no items selected
-      conditionalPanel(  #only expand if you selected other to hide the load button
-        condition = "input.species_input == 'Other'",
-        # downloadButton("downloadSpeciesExample", "Download example species input", 
-        #                style = "margin-left: 20px; margin-top: 0px; background-color: blue; color: white; font-weight: bold;"), 
-        fileInput("file_spp_param", "Upload species data and flight height distributions", accept = ".csv", multiple = TRUE, width = '90%')
-        ),
-      # checkboxInput("confirm_species_data", "Confirm check of species data"),
-      hr(),
-      # verbatimTextOutput("debug"),
+      h4("1) SCRAM run details:", style = "padding-left: 10px; margin-bottom: 0px"),
+      textInput(inputId = "project_name", label = "Project name: ", value = "", width = "320px", placeholder = "Project"),
+      textInput(inputId = "modeler", label = "Name of person running SCRAM: ", value = "", width = "320px", placeholder = "Name"),
+      
+      conditionalPanel( 
+        #show only when project names entered
+        condition = ('input.project_name != "" & input.modeler != ""'),
+        h4("2) Select the species or load species data:", style = "padding-left: 10px; margin-bottom: 0px"),
+  
+        ################### Input: Select the species to model
+        radioButtons(inputId = "species_input",
+                     label ="Select included species data or your own:",
+                     choices = c("Piping Plover" = "Piping_Plover", "Red Knot" = "Red_Knot", "Roseate Tern" = "Roseate_Tern", "Use your own species data" = "Other"),
+                     selected = character(0)), #start with no items selected
+        conditionalPanel(  #only expand if you selected other to hide the load button
+          condition = "input.species_input == 'Other'",
+          # downloadButton("downloadSpeciesExample", "Download example species input", 
+          #                style = "margin-left: 20px; margin-top: 0px; background-color: blue; color: white; font-weight: bold;"), 
+          fileInput("file_spp_param", "Upload species data and flight height distributions", accept = ".csv", multiple = TRUE, width = '90%')
+          ),
+        # checkboxInput("confirm_species_data", "Confirm check of species data"),
+        hr(),
+        # verbatimTextOutput("debug"),
+      ),
       #################Enter wind farm parameters
       conditionalPanel( 
         #show only when species data have been inputted
         condition = 'input.species_input',
-        h4("2) Load wind farm parameters:", style = "padding-left: 10px;"),
+        h4("3) Load wind farm parameters:", style = "padding-left: 10px; margin-bottom: 0px"),
         # downloadButton("downloadTurbineExample", "Download example wind farm input", 
         #                style = "margin-left: 20px; margin-top: 0px; background-color: orange; color: white; font-weight: bold;"),
         fileInput("file_wf_param", "Upload wind farm data", accept = c('text/csv', 
@@ -158,7 +173,7 @@ ui <- dashboardPage(
       conditionalPanel( 
         #show only when wind farm data have been inputted
         condition = "output.fileUploaded",
-        h4("3) Select CRM parameter options:", style = "padding-left: 10px;"),
+        h4("4) Select CRM parameter options:", style = "padding-left: 10px; margin-bottom: 0px"),
         radioButtons("optionradio", "Use complete flight height data?",
                      c("Yes" = "3", "No (faster)" = "1")),
         sliderInput("slider1", label = "Iterations", min = 100, 
@@ -325,20 +340,24 @@ ui <- dashboardPage(
                    solidHeader = F,
                    collapsible = F,
                    width = 12,
-                   fluidRow(column(
-                     width = 12, verbatimTextOutput("hack", placeholder = TRUE), 
-                     # verbatimTextOutput("study_design_report_txt")
-                   )),
-                   fluidRow(column(
-                     width = 12, verbatimTextOutput("prob", placeholder = TRUE), 
-                   )
-                   )
-                   )),
+                   textOutput("run_start_txt"),
+                   textOutput("run_end_txt"),
+                   textOutput("hack"), 
+                   textOutput("prob"), 
+                 )
+               ),
                fluidRow(
                  column(9,
                         h4("Output dashboard"), 
                         br(),
-                        plotOutput("results_plot", "400px", width = "560px")
+                        plotOutput("results_plot", "400px", width = "600px"),
+                        br(),
+                        p("Figure 1: A histogram of the number of collisions per year for each iteration. 
+                          The heights of the bars show the relative frequency of each value. 
+                          The line shows the smoothed estimate of the shape of the histogram. 
+                          Months for which movement data were provided or available are shown in bold; 
+                          only bold months are shown in histogram of annual collisions.", 
+                          style = "margin-left: 8px; font-size: 12px; margin-right: 40px")
                  ), 
                  #buttons for sensitivity Analysis, sownloading output, and generating report
                  column(3,
@@ -464,95 +483,7 @@ server <- function(input, output, session) {
   SpeciesLabels <- read.table("data/SpeciesLabels.csv", sep =",")
 
   # main plot for annual collisions
-  # observeEvent(input$run, {output$results_plot <- renderPlot({
-  #   if(!is.null(CRM_fun()$monthCollsnReps_opt1)){
-  #     if(sum(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][1]]][[1]], na.rm=TRUE)>0){
-  #       NA_index <- which(is.na(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][1]]][[1]][1,]))
-  #       outvector <- round(rowSums(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][1]]][[1]], na.rm = TRUE))
-  #       month_lab <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-  #       if(max(outvector) >= 1000){
-  #         xmin <- round(min(outvector, na.rm=TRUE))
-  #         xmax <- round(max(outvector, na.rm=TRUE))
-  #         bin_wd <- round(max(outvector)/10)
-  #         brks <- seq(xmin, xmax+bin_wd, by=bin_wd)
-  #         pad_min <- round(xmin*0.1)
-  #         pad_max <- round(xmax*0.1)
-  #         steps <- round(((xmax + pad_max) - (xmin - pad_min))/4)
-  #       }
-  #       if(max(outvector) >= 10&max(outvector) < 1000){
-  #         xmin <- round(min(outvector, na.rm=TRUE))
-  #         xmax <- round(max(outvector, na.rm=TRUE))
-  #         bin_wd <- round(max(outvector)/10)
-  #         brks <- seq(xmin, xmax+bin_wd, by=bin_wd)
-  #         #brks <- seq(xmin, xmax, by=1)
-  #         pad_min <- round(xmin*0.1)
-  #         pad_max <- round(xmax*0.1)
-  #         steps <- round(((xmax + pad_max) - (xmin - pad_min))/4)
-  #       }
-  #       if(max(outvector) <= 2&max(outvector)>1){
-  #         xmin <- 0
-  #         xmax <- 2.1
-  #         brks <- seq(0, 2, by=0.2)
-  #         pad_min <- 0
-  #         pad_max <- 0
-  #       }
-  #       if(max(outvector) <= 1){
-  #         xmin <- 0
-  #         xmax <- 1.1
-  #         brks <- seq(0, 1, by=0.1)
-  #         pad_min <- 0
-  #         pad_max <- 0
-  #       }
-  #       if(max(outvector) < 10&max(outvector) > 2){
-  #         xmin <- 0
-  #         xmax <- 10.5
-  #         brks <- seq(0, 10, by=1)
-  #         pad_min <- 0
-  #         pad_max <- 0
-  #       }
-  #       layout(matrix(c(1, 1, 1, 1, 1, 1, 1, 1, 1, 2), 10, 1))
-  #       par(mar=c(5, 2, 4, 2))
-  #       if(length(which(SpeciesLabels[,1] == CRM_fun()[['CRSpecies']][1]))>0){
-  #         main_label <- SpeciesLabels[SpeciesLabels[,1] == CRM_fun()[['CRSpecies']][1], 2]
-  #       }else{
-  #         main_label <- CRM_fun()[['CRSpecies']][1]
-  #       }
-  #       hist(outvector, freq=FALSE, main = main_label, xlab=" ", ylab=" ", bty="n",
-  #            xlim=c(xmin - pad_min, xmax + pad_max), xaxt="n", breaks=brks, border = "white", col="dark green", #rgb(175/255, 122/255, 197/255, 0.8),
-  #            cex.axis=1.5, cex.main=1.7, yaxt="n")
-  #       mtext(side=1, line=2.8, "Total collisions over months highlighted below")
-  #       box(which="outer")
-  #       if(max(outvector) >= 10){
-  #         ticks <- round(c((xmin - pad_min), ((xmin - pad_min) +(1*steps)), ((xmin - pad_min) + (2*steps)), ((xmin - pad_min) +(3*steps)), (xmax + pad_max)), digits=1)
-  #         axis(side=1, at = ticks, cex.axis=1.5)
-  #       }
-  #       if(max(outvector) <= 2&max(outvector) > 1){
-  #         axis(side=1, labels = c(0, 0.4, 0.8, 1.2, 1.6, 2), at = c(0, 0.4, 0.8, 1.2, 1.6, 2)+0.1, cex.axis=1.5)
-  #       }
-  #       if(max(outvector) <= 1){
-  #         axis(side=1, labels = c(0, 0.2, 0.4, 0.6, 0.8, 1), at = c(0, 0.2, 0.4, 0.6, 0.8, 1)+0.05, cex.axis=1.5)
-  #       }
-  #       if(max(outvector) < 10&max(outvector) > 2){
-  #         axis(side=1, labels = c(0, 2, 4, 6, 8, 10), at = c(0, 2, 4, 6, 8, 10)+0.5, cex.axis=1.5)
-  #       }
-  #       polygon(x=c(input$inputthreshold, 0, 0, input$inputthreshold), y=c(0, 0, 1, 1), col=rgb(1, 1, 1, 0.65), border=rgb(0, 0, 0, 0))
-  #       bold <- rep(2, 12)
-  #       month_col <- rep("dark blue", 12)
-  #       month_col[NA_index] <- rgb(0, 0, 0, 0.8)
-  #       bold[NA_index] <- 1
-  #       par(mar=c(0, 0, 0, 0))
-  #       plot(-10, -10, col="white", xlim=c(0.5, 12.5), ylim=c(1, 3))
-  #       text(1:12, rep(2, 12), month_lab, cex=1.6, font = bold, col = month_col)
-  #     }else{
-  #       par(mar=c(4, 4.5, 3, 1))
-  #       plot(1:1, col="white", xlim=c(0, 10), ylim=c(0, 10), xaxt="n", yaxt="n", xlab=" ", ylab=" ", bty="n")
-  #       text(4, 5, "Option not run", cex=2, adj=c(0.5, 0.5))
-  #       box(which="outer")
-  #     }
-  #   }
-  # })
-  # })
-  
+  # ATG - modified to use ggplot instead as it's easier and a lot more sophisticated then base plot
   observeEvent(input$run, {output$results_plot <- renderPlot({
     if(!is.null(CRM_fun()$monthCollsnReps_opt1)){
       if(sum(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][1]]][[1]], na.rm=TRUE)>0){
@@ -562,8 +493,8 @@ server <- function(input, output, session) {
         
         xmin <- round(min(outvector, na.rm=TRUE))
         xmax <- round(max(outvector, na.rm=TRUE))
-        print(paste("outvector",outvector))
-        print(paste(xmin, xmax))
+        # print(paste("outvector",outvector))
+        # print(paste(xmin, xmax))
         if (sum(outvector)==0){
           #no collisions provide a modified figure
           no_coll = T
@@ -576,8 +507,8 @@ server <- function(input, output, session) {
           fig_text = "No collisions predicted"
           
         } else {
-          plot_xmin = xmin
-          plot_xmax = xmax
+          plot_xmin = -0.5
+          plot_xmax = NA
           plot_ymin = 0
           plot_ymax = NA
           x_ann = 0
@@ -596,16 +527,24 @@ server <- function(input, output, session) {
         month_col[NA_index] <- rgb(0, 0, 0, 0.8)
         bold[NA_index] <- 1 # make bold those months with data
         p1 <- ggplot2::ggplot(data.frame(outvector=outvector), aes(outvector)) + 
-          stat_bin(bins=10, col="darkgreen", fill="darkgreen") +
+          #center on integers use binwidth = 1 and center = 0; but modified to make bar end at number for thresholding
+          stat_bin(bins=12, aes(y = stat(count / sum(count))), col="darkgreen", fill="darkgreen", binwidth = 1, center = 0) +
+          geom_density(adjust=2) +  #create a kernel density curve
           ggtitle(main_label) +
           xlim(c(plot_xmin, plot_xmax)) +
           ylim(c(plot_ymin, plot_ymax)) +
           xlab("Total collisions over months highlighted below") +
           annotate("text", x=x_ann, y=y_ann, label = fig_text) +
-          theme_light() + 
-          theme(axis.title.y = element_blank())
+          annotate("rect", xmin=-0.5, xmax=input$inputthreshold, ymin=0, ymax=1, fill=rgb(1, 1, 1, 0.65), col=rgb(0, 0, 0, 0)) +
+          geom_vline(xintercept = input$inputthreshold, color = "red", linetype = "dashed") +
+          annotate("text", x=input$inputthreshold, y=0.5, col="red", label = "Input threshold", angle=90, vjust=1.5) +
+          theme_classic() + 
+          theme(axis.title.y = element_blank(),
+                axis.ticks.y = element_blank(),
+                axis.text.y = element_blank()
+                )
         
-        cowplot::ggdraw(cowplot::add_sub(p1, label = month_lab, x= seq(0.1,0.9,0.8/11), color = month_col, size = 10, fontface = bold))
+        cowplot::ggdraw(cowplot::add_sub(p1, label = month_lab, x=seq(0.1,0.9,0.8/11), color = month_col, size = 10, fontface = bold))
       
       }else{
         par(mar=c(4, 4.5, 3, 1))
@@ -616,22 +555,39 @@ server <- function(input, output, session) {
     }
   })
   })
-
-  # render text to report the probability of collisions exceeding a user-specified threshold
-  observeEvent(input$run, {output$prob <- renderText({
+  
+  prob_exceed_threshold <- eventReactive(input$run, {
     if(!is.null(CRM_fun()$monthCollsnReps_opt1)){
       threshold_text <- length(which(rowSums(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][1]]][[1]], na.rm=TRUE) > input$inputthreshold))/
-        length(rowSums(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][1]]][[1]]))
+              length(rowSums(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][1]]][[1]]))
       if(threshold_text == 1){
         threshold_text <- paste("<", isolate(round(1 - 1/input$slider1, log10(input$slider1))), sep=" ")
       }
       if(threshold_text == 0){
         threshold_text <- paste("<", isolate(round(((1/input$slider1)), log10(input$slider1))), sep=" ")
       }
-      paste("The probability of exceeding specified threshold is ", threshold_text, ".", sep="")
+      return(threshold_text)
     }
   })
-  })
+
+  # rendetext to report the probability of collisions exceeding a user-specified threshold
+  # Divide the total number of collision results exceeding the threshold, dividided by the total number of runs
+  # observeEvent(input$run, {output$prob <- renderText({
+  #   if(!is.null(CRM_fun()$monthCollsnReps_opt1)){
+  #     threshold_text <- length(which(rowSums(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][1]]][[1]], na.rm=TRUE) > input$inputthreshold))/
+  #       length(rowSums(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][1]]][[1]]))
+  #     if(threshold_text == 1){
+  #       threshold_text <- paste("<", isolate(round(1 - 1/input$slider1, log10(input$slider1))), sep=" ")
+  #     }
+  #     if(threshold_text == 0){
+  #       threshold_text <- paste("<", isolate(round(((1/input$slider1)), log10(input$slider1))), sep=" ")
+  #     }
+  #     paste("The probability of exceeding specified threshold is ", threshold_text, ".", sep="")
+  #   }
+  # })
+  # })
+  
+  output$prob <- renderText(paste0("The probability of exceeding specified threshold (", input$inputthreshold,") is ", prob_exceed_threshold(), "."))
 
   # dialog box for sensitivity analyses
   observeEvent(input$runGSA, {
@@ -1185,12 +1141,15 @@ server <- function(input, output, session) {
   interruptor <- AsyncInterruptor$new()
   CRM_fun <- reactiveVal()
   running <- reactiveVal(FALSE)
+  run_times <- reactiveValues()
 
   # primary function that called computational script (using a promise)
   observeEvent(input$run, {
     if(running())
       return(NULL)
     running(TRUE)
+    run_times$start <- Sys.time()
+    output$run_start_txt <- renderText(paste0("The model run was started at: ", strftime(run_times$start, "%Y-%m-%d %H:%M:%S")))
     movement_type2 <- movement_type()
     speciesreact2 <- speciesreact()
     radioreact2 <- radioreact()
@@ -1251,6 +1210,9 @@ server <- function(input, output, session) {
     fut <- finally(fut, function(){
       progress$close()
       running(FALSE) # done with run
+      run_times$end <- Sys.time()
+      output$run_end_txt <- renderText(paste0("The model run was completed at: ", strftime(run_times$end, "%Y-%m-%d %H:%M:%S")))
+      # run_elaps_time <- run_end_time - run_start_time
       # output$study_design_report_txt <- renderPrint(CRM_fun())
       updateTabItems(session, inputId = "tabsetpan", selected = "crm_results")
     })
@@ -1416,16 +1378,33 @@ server <- function(input, output, session) {
   # download handler for report using R Markdown
   output$report <- downloadHandler(
     # for PDF output, change this to "report.pdf"
-    filename = paste0("SCRAM_report_", strftime(Sys.time(), "%Y%m%d_%H%M%S"), ".pdf"),
+    filename = paste0("SCRAM_report_", strftime(isolate(run_times$end), "%Y%m%d_%H%M%S"), ".pdf"),
     content = function(file) {
       # copy the report file to a temporary directory before processing it, in
       # case we don't have write permissions to the current working dir (which
       # can happen when deployed).
-      tempReport <- file.path(tempdir(), "report_BRI.Rmd")
-      file.copy("data/report_BRI.Rmd", tempReport, overwrite = TRUE)
+      tempReport <- file.path(tempdir(), "report_BRI_v2.Rmd")
+      img1 <- file.path(tempdir(), "SCRAM_logo_400px.png")
+      img2 <- file.path(tempdir(), "BRI_color_logo_no_words.png")
+      img3 <- file.path(tempdir(), "URI.png")
+      img4 <- file.path(tempdir(), "USFWS.png")
+      img5 <- file.path(tempdir(), "BOEM.png")
+      
+      file.copy("report_BRI_v2.Rmd", tempReport, overwrite = TRUE)
+      # need to copy images to temp dir otherwise can't be found 
+      # see: (https://stackoverflow.com/questions/35800883/using-image-in-r-markdown-report-downloaded-from-shiny-app?rq=1)
+      file.copy("www/SCRAM_logo_400px.png", img1, overwrite = TRUE) 
+      file.copy("www/BRI_color_logo_no_words.png", img2, overwrite = TRUE) 
+      file.copy("www/URI.png", img3, overwrite = TRUE) 
+      file.copy("www/USFWS.png", img4, overwrite = TRUE) 
+      file.copy("www/BOEM.png", img5, overwrite = TRUE) 
 
       # set up parameters to pass to Rmd document
-      params <- list(iterations = input$slider1, model_output = CRM_fun(), threshold = input$inputthreshold, option = input$optionradio, species_labels = SpeciesLabels)
+      params <- list(SCRAM_version = SCRAM_version, project = input$project_name, modeler = input$modeler, run_start_time = isolate(run_times$start), run_end_time = isolate(run_times$end), 
+                     iterations = input$slider1, model_output = CRM_fun(), threshold = input$inputthreshold, prob_exceed = isolate(prob_exceed_threshold()), 
+                     option = input$optionradio, species_labels = SpeciesLabels)
+      
+      # params <- list(iterations = input$slider1, model_output = CRM_fun(), threshold = input$inputthreshold, option = input$optionradio, species_labels = SpeciesLabels)
       # Knit the document, passing in the `params` list, and eval it in a
       # child of the global environment (this isolates the code in the document
       # from the code in this app).
@@ -1476,7 +1455,7 @@ server <- function(input, output, session) {
   # download handler for raw results download
   output$downloadDataRaw <-
     downloadHandler(
-      filename = paste0('SCRAM_model_output_', strftime(Sys.time(), "%Y%m%d_%H%M%S"),'.zip'),
+      filename = paste0('SCRAM_model_output_', strftime(isolate(run_times$end), "%Y%m%d_%H%M%S"),'.zip'),
       content = function(fname) {
         tmpdir = tempdir()
         fnames4zip1 <- list()
@@ -1495,9 +1474,11 @@ server <- function(input, output, session) {
             fnames4zip3 <- c(fnames4zip3, paste0(tmpdir, "/", CRM_fun()[['CRSpecies']][e], "_", paste0("turbModel", CRM_fun()[['Turbines']][w]),"_sensitivity.csv"))
           }}
         fnames4zip4 <- list()
-        params <- list(iterations = input$slider1, model_output = CRM_fun(), threshold = input$inputthreshold, option = input$optionradio, species_labels = SpeciesLabels)
-        save(params, file = file.path(tmpdir, paste0('SCRAM_model_output_', strftime(Sys.time(), "%Y%m%d_%H%M%S"),'.RData'))) 
-        fnames4zip4 <- c(fnames4zip4, file.path(tmpdir, paste0('SCRAM_model_output_', strftime(Sys.time(), "%Y%m%d_%H%M%S"),'.RData')))
+        
+        params <- list(SCRAM_version = SCRAM_version, project = input$project_name, modeler = input$modeler, run_start_time = isolate(run_times$start),  run_end_time = isolate(run_times$end), 
+                       prob_exceed = isolate(prob_exceed_threshold()), iterations = input$slider1, model_output = CRM_fun(), threshold = input$inputthreshold, option = input$optionradio, species_labels = SpeciesLabels)
+        save(params, file = file.path(tmpdir, paste0('SCRAM_model_output_', strftime(isolate(run_times$end), "%Y%m%d_%H%M%S"),'.RData'))) 
+        fnames4zip4 <- c(fnames4zip4, file.path(tmpdir, paste0('SCRAM_model_output_', strftime(isolate(run_times$end), "%Y%m%d_%H%M%S"),'.RData')))
         
         utils::zip(zipfile=fname, files=unlist(c(fnames4zip1, fnames4zip2, fnames4zip3, fnames4zip4)), flags = "-r9Xj")
         #if(file.exists(paste0(fname, ".zip"))) {file.rename(paste0(fname, ".zip"), fname)}

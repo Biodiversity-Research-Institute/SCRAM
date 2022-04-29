@@ -153,7 +153,9 @@ sampledBirdParamsIters[, 4] = sampledBirdParams$FlightSpeed
 sampledTurbineParamsSummary = data.frame(matrix(data = 0, ncol = 5, nrow = 22))
 names(sampledTurbineParamsSummary) = c("Parameter","Mean", "SD", "Median", "IQR")
 # pitch_rad is used instead of pitch for column label
-sampledTurbineParamsSummary[, 1] = c("RotorRadius_m", "HubHeight_m", "BladeWidth_m", "WindSpeed_mps", "RotorSpeed_rpm", "Pitch_rad", "WFWidth_km", "Latitude", "Prop_Upwind", "Num_Turbines", "JanOp", "FebOp", "MarOp", "AprOp", "MayOp", "JunOp", "JulOp", "AugOp", "SepOp", "OctOp", "NovOp", "DecOp")
+sampledTurbineParamsSummary[, 1] = c("RotorRadius_m", "HubHeight_m", "BladeWidth_m", "WindSpeed_mps", "RotorSpeed_rpm", "Pitch_rad", "WFWidth_km", 
+                                     "Latitude", "Prop_Upwind", "Num_Turbines", "JanOp", "FebOp", "MarOp", "AprOp", "MayOp", "JunOp", "JulOp", 
+                                     "AugOp", "SepOp", "OctOp", "NovOp", "DecOp")
 sampledTurbineParamsSummary[1, 2:5] = c(mean(sampledTurbine$RotorRadius_m), sd(sampledTurbine$RotorRadius_m), median(sampledTurbine$RotorRadius_m), IQR(sampledTurbine$RotorRadius_m))
 sampledTurbineParamsSummary[2, 2:5] = c(mean(sampledTurbine$HubHeight_m), sd(sampledTurbine$HubHeight_m), median(sampledTurbine$HubHeight_m), IQR(sampledTurbine$HubHeight_m))
 sampledTurbineParamsSummary[3, 2:5] = c(mean(sampledTurbine$BladeWidth_m), sd(sampledTurbine$BladeWidth_m), median(sampledTurbine$BladeWidth_m), IQR(sampledTurbine$BladeWidth_m))
@@ -183,7 +185,9 @@ sampledTurbineParamsSummary[22, 2:5] = c(mean(sampledTurbine$DecOp), sd(sampledT
 # write.csv (sampledTurbineParamsSummary, paste(results_folder, "tables", fileName, sep="/"))
 
 sampledTurbineParamsIters = data.frame(matrix(data = 0, ncol = 22, nrow = iter))
-names(sampledTurbineParamsIters) = c("RotorRadius_m", "HubHeight_m", "BladeWidth_m", "WindSpeed_mps", "RotorSpeed_rpm", "Pitch_rad", "WFWidth_km", "Latitude", "Prop_Upwind", "Num_Turbines", "JanOp", "FebOp", "MarOp", "AprOp", "MayOp", "JunOp", "JulOp", "AugOp", "SepOp", "OctOp", "NovOp", "DecOp")
+names(sampledTurbineParamsIters) = c("RotorRadius_m", "HubHeight_m", "BladeWidth_m", "WindSpeed_mps", "RotorSpeed_rpm", "Pitch_rad", "WFWidth_km", 
+                                     "Latitude", "Prop_Upwind", "Num_Turbines", "JanOp", "FebOp", "MarOp", "AprOp", "MayOp", "JunOp", "JulOp", 
+                                     "AugOp", "SepOp", "OctOp", "NovOp", "DecOp")
 sampledTurbineParamsIters[, 1] = sampledTurbine$RotorRadius_m
 sampledTurbineParamsIters[, 2] = sampledTurbine$HubHeight_m
 sampledTurbineParamsIters[, 3] = sampledTurbine$BladeWidth_m

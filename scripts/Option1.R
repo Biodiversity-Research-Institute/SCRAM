@@ -1,4 +1,7 @@
 # Option 1
+# ATG - check to see why sampledSpeciesCount[i, h]/1000
+# We see this warning: Warning in hours$Flux[h] <- (sampledSpeciesCount[i, h]/1000) * TotalFrontalArea :
+# number of items to replace is not a multiple of replacement length
 for (h in 1:nrow(hours)){ 
   hours$Flux[h] <- (sampledSpeciesCount[i, h]/1000)*TotalFrontalArea
 }
