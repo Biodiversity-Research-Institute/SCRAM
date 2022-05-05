@@ -14,13 +14,28 @@ params:
   prob_exceed: NA
   option: NA
   species_labels: NA
+header-includes:
+  - \usepackage{booktabs}
+  - \usepackage{longtable}
+  - \usepackage{array}
+  - \usepackage{multirow}
+  - \usepackage{wrapfig}
+  - \usepackage{float}
+  - \usepackage{colortbl}
+  - \usepackage{pdflscape}
+  - \usepackage{tabu}
+  - \usepackage{threeparttable}
+  - \usepackage[normalem]{ulem}
 ---
+<!-- header-includes required because won't re-run after first report download -->
+<!-- Fix: https://stackoverflow.com/questions/46080853/why-does-rendering-a-pdf-from-rmarkdown-require-closing-rstudio-between-renders/46083308#46083308 -->
 
 ```{r setup, include=FALSE}
 library(knitr)
 library(kableExtra)
 library(dplyr)
 library(ggplot2)
+options(tinytex.verbose = TRUE)
 # load(file = "C:/Users/andrew.gilbert/Downloads/SCRAM_model_output_20220429_154239/SCRAM_model_output_20220429_154239.RData")
 
 ```

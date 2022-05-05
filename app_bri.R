@@ -21,7 +21,7 @@
 
 
 source("helpers.R")
-SCRAM_version = "0.74.1 - Eupatorium"
+SCRAM_version = "0.74.2 - Eupatorium"
 # run_start_time = NA
 # run_end_time = NA
 options(shiny.trace = F)
@@ -386,7 +386,7 @@ ui <- dashboardPage(
 )
 
 
-verbose <- T
+verbose <- F
 
 # Define server logic
 server <- function(input, output, session) {
@@ -529,9 +529,9 @@ server <- function(input, output, session) {
               fig_text = "No collisions predicted"
               
             } else {
-              plot_xmin = -0.5
+              plot_xmin = 0
               plot_xmax = NA
-              plot_ymin = 0
+              plot_ymin = -0.0001
               plot_ymax = NA
               x_ann = 0
               y_ann = 0
@@ -1432,14 +1432,14 @@ server <- function(input, output, session) {
       img4 <- file.path(tempdir(), "USFWS.png")
       img5 <- file.path(tempdir(), "BOEM.png")
       
-      file.copy("report_BRI_v2.Rmd", tempReport, overwrite = TRUE)
+      file.copy("scripts/report_BRI_v2.Rmd", tempReport, overwrite = TRUE)
       # need to copy images to temp dir otherwise can't be found 
       # see: (https://stackoverflow.com/questions/35800883/using-image-in-r-markdown-report-downloaded-from-shiny-app?rq=1)
-      file.copy("www/SCRAM_logo_2_4inch.jpg", img1, overwrite = TRUE) 
-      file.copy("www/BRI_color_logo_no_words.png", img2, overwrite = TRUE) 
-      file.copy("www/URI.png", img3, overwrite = TRUE) 
-      file.copy("www/USFWS.png", img4, overwrite = TRUE) 
-      file.copy("www/BOEM.png", img5, overwrite = TRUE) 
+      file.copy("www/SCRAM_logo_2_4inch.jpg", img1, overwrite = TRUE)
+      file.copy("www/BRI_color_logo_no_words.png", img2, overwrite = TRUE)
+      file.copy("www/URI.png", img3, overwrite = TRUE)
+      file.copy("www/USFWS.png", img4, overwrite = TRUE)
+      file.copy("www/BOEM.png", img5, overwrite = TRUE)
 
       # set up parameters to pass to Rmd document
       params <- list(SCRAM_version = SCRAM_version, project = input$project_name, modeler = input$modeler, run_start_time = isolate(run_times$start), run_end_time = isolate(run_times$end), 
