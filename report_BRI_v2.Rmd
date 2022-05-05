@@ -1,7 +1,7 @@
 ---
 title: 'Summary of simulation results from SCRAM: a stochastic collision risk assessment for movement data tool'
-output:
-  pdf_document: default 
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output: pdf_document
 params:
   SCRAM_version: NA
   project: NA
@@ -25,9 +25,8 @@ library(ggplot2)
 
 ```
 
-
 \begin{center}
-\includegraphics[width=\textwidth]{SCRAM_logo_400px.png}
+\includegraphics[width=1\textwidth]{SCRAM_logo_2_4inch.jpg}
 \end{center}
 
 <br>
@@ -45,11 +44,6 @@ SCRAM was developed by Biodiversity Research Institute, the University of Rhode 
 \includegraphics[width=0.2\textwidth]{BOEM.png}
 \end{center}
 
-<!-- ![Biodiversity Research Institute](www/BRI_color_logo_no_words.png){width=1in} -->
-<!-- ![University of Rhode Island](www/URI.png){width=1in}  -->
-<!-- ![U.S. Fish and Wildlife Service](www/USFWS.png){width=1in}  -->
-<!-- ![Bureau of Ocean Energy Management](www/BOEM.png){width=1in} -->
-
 <br>
 <br>
 
@@ -60,6 +54,7 @@ SCRAM was developed by Biodiversity Research Institute, the University of Rhode 
 <br>
 <br>
 
+
 ```{r, echo=FALSE, warning=FALSE, message = FALSE}
   
 option_names <- c("Basic option", "Approximated option, without a flight height distribution", "Approximated option, with a flight height distribution", "Individual-based option without a flight height distribution", "Individual-based option with a flight height distribution")
@@ -68,8 +63,8 @@ option_names <- c("Basic option", "Approximated option, without a flight height 
 cat(paste0("SCRAM - the Stochastic Collision Risk Assessment for Movement version ", params$SCRAM_version,"\nwas run for ", params$iterations, " iterations using the: ", option_names[as.numeric(params$option)], "\n", 
           "Project: ", params$project, "\n",
           "Modeler: ", params$modeler, "\n",
-          "The model run was started at: ",  format(params$run_start_time, "%a %b %d %X %Y"), "\n",
-          "The model run was completed at: ",  format(params$run_end_time, "%a %b %d %X %Y"), "\n",
+          "The model run was started at: ",  format(params$run_start_time, "%a %b %d %X %Y %Z"), "\n",
+          "The model run was completed at: ",  format(params$run_end_time, "%a %b %d %X %Y %Z"), "\n",
           "The probability of exceeding specified threshold (", params$threshold,") is: ", params$prob_exceed), sep="")
 
 ```
@@ -80,8 +75,6 @@ cat(paste0("SCRAM - the Stochastic Collision Risk Assessment for Movement versio
 
 <br>
 <br>
-
-Table 1: For each parameter, the mean and 95% range (show in the parenthetical) is given for each species and turbine model combination.
 
 ```{r, table1, echo=FALSE, message=FALSE, warning=FALSE}
 num_species <- length(params$model_output[['CRSpecies']])
@@ -124,8 +117,9 @@ colnames(bird_params_table) <- c("Species", "Turbine Power (MW)", "Avoidance", "
 #https://stackoverflow.com/questions/53153537/rmarkdown-setting-the-position-of-kable
 #if you find HOLD_position is not powerful enough to literally PIN your table in the exact position, you may want to 
 # use HOLD_position, which is a more powerful version of this feature
-kbl(bird_params_table,booktabs=T) %>%
-  kable_styling(position="center", full_width=F, latex_options = "HOLD_position") %>% 
+# percent symbol causing issues in caption
+kbl(bird_params_table, booktabs=T, caption = "For each parameter, the mean and 95 perc. range (show in the parenthetical) is given for each species and turbine model combination.") %>%
+  kable_styling(position="left", full_width=F, latex_options = c("HOLD_position", "striped")) %>% 
   row_spec(0,bold=T) %>% 
   column_spec(1,bold=T,color="red") %>% 
   column_spec(2,bold=T,color="blue",width = "0.75in") %>% 
@@ -134,8 +128,6 @@ kbl(bird_params_table,booktabs=T) %>%
 ```
 <br>
 <br>
-
-Table 2: For each parameter, the mean and 95% range (show in the parenthetical) is given for each species and turbine model combination.
 
 ```{r, table2, echo=FALSE, warning=FALSE, message = FALSE}
 
@@ -168,8 +160,8 @@ for(e in 1:num_species){
   }
 }
 colnames(turb_params_table) <- c("Species", "Turbine Power (MW)", "Num. turbines", "Rotor radius", "Hub height (m)", "Blade width (m)", "Wind speed (mps)")
-kbl(turb_params_table,booktabs=T) %>%
-  kable_styling(position="center", full_width=F, latex_options = "HOLD_position") %>% 
+kbl(turb_params_table, booktabs=T, caption = "For each parameter, the mean and 95 perc. range (show in the parenthetical) is given for each species and turbine model combination.") %>%
+  kable_styling(position="left", full_width=F, latex_options = c("HOLD_position", "striped")) %>% 
   row_spec(0,bold=T) %>% 
   column_spec(1,bold=T,color="red") %>% 
   column_spec(2,bold=T,color="blue",width = "0.75in") %>% 
@@ -178,7 +170,6 @@ kbl(turb_params_table,booktabs=T) %>%
 ```
 <br>
 <br>
-Table 3: For each parameter, the mean and 95% range (show in the parenthetical) is given for each species and turbine model combination.
 
 ```{r, table3, echo=FALSE, warning=FALSE, message = FALSE}
 num_species <- length(params$model_output[['CRSpecies']])
@@ -209,8 +200,8 @@ for(e in 1:num_species){
   }
 }
 colnames(turb_params_table2) <- c("Species", "Turbine Power (MW)", "Rotor speed (rpm)", "Pitch (radians)", "Farm width (km)", "Lat.", "Prop. upwind")
-kbl(turb_params_table2,booktabs=T) %>%
-  kable_styling(position="center", full_width=F, latex_options = "HOLD_position") %>% 
+kbl(turb_params_table2, booktabs=T, caption = "For each parameter, the mean and 95 perc. range (show in the parenthetical) is given for each species and turbine model combination") %>%
+  kable_styling(position="left", full_width=F, latex_options = c("HOLD_position", "striped")) %>% 
   row_spec(0,bold=T) %>% 
   column_spec(1,bold=T,color="red") %>% 
   column_spec(2,bold=T,color="blue",width = "0.75in") %>% 
@@ -219,7 +210,6 @@ kbl(turb_params_table2,booktabs=T) %>%
 ```
 <br>
 <br>
-Table 4: For each parameter, the mean and 95% range (show in the parenthetical) is given for each species and turbine model combination
 
 ```{r, table4, echo=FALSE, warning=FALSE, message = FALSE}
 #ATG - 030422 - slight change to format tables, split into 2
@@ -251,8 +241,8 @@ for(e in 1:num_species){
   }
 }
 colnames(turb_params_table_pt1) <- c("Species", "Turbine Power (MW)", "Jan", "Feb", "Mar", "Apr", "May", "Jun")
-kbl(turb_params_table_pt1,booktabs=T) %>%
-  kable_styling(position="center", full_width=F, latex_options = "HOLD_position") %>% 
+kbl(turb_params_table_pt1,booktabs=T, caption = "For each parameter, the mean and 95 perc. range (show in the parenthetical) is given for each species and turbine model combination.") %>%
+  kable_styling(position="left", full_width=F, latex_options = c("HOLD_position", "striped")) %>% 
   row_spec(0,bold=T) %>% 
   column_spec(1,bold=T,color="red") %>% 
   column_spec(2,bold=T,color="blue",width = "0.65in") %>% 
@@ -261,10 +251,8 @@ kbl(turb_params_table_pt1,booktabs=T) %>%
 ```
 <br>
 <br>
-Table 5: For each parameter, the mean and 95% range (show in the parenthetical) is given for each species and turbine model combination.
 
 ```{r, table5, echo=FALSE, warning=FALSE, message = FALSE}
-#ATG - 030422 - slight change to format tables, split into 2
 num_species <- length(params$model_output[['CRSpecies']])
 num_turb_mods <- length(params$model_output[['Turbines']])
 sampled_subset <- subset(
@@ -294,8 +282,8 @@ for(e in 1:num_species){
 }
 
 colnames(turb_params_table_pt2) <- c("Species", "Turbine Power (MW)", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-kbl(turb_params_table_pt2,booktabs=T) %>%
-  kable_styling(position="center", full_width=F, latex_options = "HOLD_position") %>% 
+kbl(turb_params_table_pt2, booktabs=T, caption = "For each parameter, the mean and 95 perc. range (show in the parenthetical) is given for each species and turbine model combination") %>%
+  kable_styling(position="left", full_width=F, latex_options = c("HOLD_position", "striped")) %>% 
   row_spec(0,bold=T) %>% 
   column_spec(1,bold=T,color="red") %>% 
   column_spec(2,bold=T,color="blue",width = "0.65in") %>% 
@@ -307,21 +295,14 @@ kbl(turb_params_table_pt2,booktabs=T) %>%
 
 ## Results figures for the stochastic simulation
 
-Results of the stochastic simulation for each value provided or selected for the turbine and wind farm data.  
 
-Please see below for summary statistics for each of the stochastic parameters.
-
-
-```{r, fig1, fig.height = 4, fig.width = 6.5, echo=FALSE, warning=FALSE, message = FALSE}
+```{r, fig1, fig.height = 4, echo=FALSE, warning=FALSE, message = FALSE, fig.cap = "A histogram of the number of collisions per year for each iteration. The heights of the bars show the relative frequency of each value. The line shows the smoothed estimate of the shape of the histogram. Months for which movement data were provided or available are shown in bold; only bold months are shown in histogram of annual collisions.", fig.pos="t"}
 
 num_species <- length(params$model_output[['CRSpecies']])
 num_turb_mods <- length(params$model_output[['Turbines']])
 for(q in 1:num_species){
   for(i in 1:num_turb_mods){
     if(!is.null(params$model_output$monthCollsnReps_opt1)){
-      # if(sum(params$model_output[[as.numeric(params$option)]][[params$model_output[['CRSpecies']][1]]][[1]], na.rm=TRUE)>0){
-      #   NA_index <- which(is.na(params$model_output[[as.numeric(params$option)]][[params$model_output[['CRSpecies']][1]]][[1]][1,]))
-      #   outvector <- round(rowSums(params$model_output[[as.numeric(params$option)]][[params$model_output[['CRSpecies']][1]]][[1]], na.rm = TRUE))
       if(sum(params$model_output[[as.numeric(params$option)]][[params$model_output[['CRSpecies']][q]]][[i]], na.rm=TRUE)>0){
         NA_index <- which(is.na(params$model_output[[as.numeric(params$option)]][[params$model_output[['CRSpecies']][q]]][[i]][1,]))
         outvector <- round(rowSums(params$model_output[[as.numeric(params$option)]][[params$model_output[['CRSpecies']][q]]][[i]], na.rm = TRUE))
@@ -380,27 +361,27 @@ for(q in 1:num_species){
           )
         
         print(cowplot::ggdraw(cowplot::add_sub(p1, label = month_lab, x=seq(0.1,0.9,0.8/11), color = month_col, size = 10, fontface = bold)))
-        
       }else{
         ggplot() +
           theme_void() +
           geom_text(aes(0,0,label="This plot left intentionally blank.\nOption not run.")) +
           xlab(NULL) #optional, but safer in case another theme is applied later
       }
+      #There needs to be spaces between plots in R Markdown if they are to be given their own caption
+      #https://stackoverflow.com/questions/52788015/looping-through-a-list-of-ggplots-and-giving-each-a-figure-caption-using-knitr
+      cat('\n\n')
+
     }
   }
+    # cat('\n\n')
+
 }
 
 ```
-<br>
-  
-Figure 1: A histogram of the number of collisions per year for each iteration. The heights of the bars show the relative frequency of each value. The line shows the smoothed estimate of the shape of the histogram. Months for which movement data were provided or available are shown in bold; only bold months are shown in histogram of annual collisions. 
-
-<br>
 
 \newpage
-  
-```{r, fig2, fig.height = 4, fig.width = 6.5, echo=FALSE, warning=FALSE, message = FALSE}
+
+```{r, fig2, fig.height = 4, echo=FALSE, warning=FALSE, message = FALSE, fig.cap="The predicted mean and 95 perc. CI number of collisions per month. Results are not shown for months that do not have movement data."}
 
 num_species <- length(params$model_output[['CRSpecies']])
 num_turb_mods <- length(params$model_output[['Turbines']])
@@ -447,20 +428,16 @@ for(q in 1:num_species){
     theme(axis.title.x = element_blank(),
           plot.title = element_text(hjust = 0.5)
     ))
+  cat('\n\n')
 
   }
 }
 
 ```
-<br>
-
-Figure 2: The predicted mean and 95% CI number of collisions per month. Results are not shown for months that do not have movement data. 
-
-<br>
 
 \newpage
 
-```{r, fig3, fig.height = 4, fig.width = 6.5, echo=FALSE, warning=FALSE, message = FALSE}
+```{r, fig3, fig.height = 4, echo=FALSE, warning=FALSE, message = FALSE, fig.cap="The number of collisions per month for each species and turbine model combination. For each month, 100 iterations of the simulation results show typical variation among iterations. The iterations among this set that exceed the user-specified threshold for the number of collisions, if set, are shown in red; iterations below this threshold are shown in blue. The mean and 95 perc. range among iterations are shown for each month to the right of the plot. "}
 
 num_species <- length(params$model_output[['CRSpecies']])
 num_turb_mods <- length(params$model_output[['Turbines']])
@@ -515,19 +492,17 @@ for(q in 1:num_species){
             plot.title = element_text(hjust = 0.5),
             legend.position = "none"
       ))
+    cat('\n\n')
+
   }
 }
 
 ```
-<br>
-
-Figure 3: The number of collisions per month for each species and turbine model combination. For each month, 100 iterations of the simulation results show typical variation among iterations. The iterations among this set that exceed the user-specified threshold for the number of collisions, if set, are shown in red; iterations below this threshold are shown in blue. The mean and 95% range among iterations are shown for each month to the right of the plot. 
-
-<br>
 
 \newpage
 
-```{r, fig4, fig.height = 4, fig.width = 6.5, echo=FALSE, warning=FALSE, message = FALSE}
+```{r, fig4, fig.height = 4, echo=FALSE, warning=FALSE, message = FALSE, fig.cap="If multiple turbine models were run, this space shows histograms comparing the difference in the number of collisions per year between models. The y-axis shows the relative frequency (0-1) among iterations of each value for the difference between models, labeled by their power output. If the entire histogram lies above zero, the number of collisions was always higher for model listed first. "}
+
 num_turb_mods <- length(params$model_output[['Turbines']])
 if(num_turb_mods>1){
   #generate combination of turbine pairs
@@ -562,16 +537,9 @@ if(num_turb_mods>1){
     xlab(NULL) #optional, but safer in case another theme is applied later
   
 }
+cat('\n\n')
+
 
 ```
 
 <br>
-
-Figure 4: If multiple turbine models were run, this space shows histograms comparing the difference in the number of collisions per year between models. The y-axis shows the relative frequency (0-1) among iterations of each value for the difference between models, labeled by their power output. If the entire histogram lies above zero, the number of collisions was always higher for model listed first. 
-
-<br>
-
-
-
-
-

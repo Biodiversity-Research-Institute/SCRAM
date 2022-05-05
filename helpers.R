@@ -31,6 +31,7 @@ library(ipc)
 library(leaflet)
 library(leaflet.esri)
 library(ggplot2)
+library(cowplot)
 library(knitr)
 library(future)
 library(promises)
@@ -39,7 +40,9 @@ plan(multiprocess)
 
 #load the species movement model mean monthly probability data
 #generate all species data
-data_dir <- "P:/SCRAM/BRI/SCRAM_shiny/data"
+# data_dir <- "P:/SCRAM/BRI/SCRAM_shiny/data"
+data_dir <- "data"
+
 for (species in c("Red_Knot", "Piping_Plover", "Roseate_Tern")){
   data_layer <-  paste0(species, "_monthly_prob_BOEM_half_deg")
   load(file.path(data_dir, paste0(species, "_monthly_prob_BOEM_half_deg.RData")))

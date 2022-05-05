@@ -17,10 +17,11 @@
 #   Add back probability prediction for exceeding collision threshold
 #   Create probability of occurrence polygons layers for PIPL, REKN, ROST from baked data files for mapping
 # 27 April 22 - recreated output report using DPLYR and ggplot to simplify
+# 05 May 22 - fixed issues with report and output tables to tabs in results figure 
 
 
 source("helpers.R")
-SCRAM_version = "0.73 - Diervilla"
+SCRAM_version = "0.74 - Eupatorium"
 # run_start_time = NA
 # run_end_time = NA
 options(shiny.trace = F)
@@ -289,7 +290,7 @@ ui <- dashboardPage(
           )
         ),
         fluidRow(
-          column(9,
+          column(7,
                 fluidRow(
                   # tabBox(
                   #   title = "Wind Farm Data",
@@ -310,7 +311,7 @@ ui <- dashboardPage(
                    )
                  )
           ),
-          column(3,
+          column(5,
                  fluidRow(
                    box(
                      title = "Wind Farm Map",
@@ -347,20 +348,21 @@ ui <- dashboardPage(
                  )
                ),
                fluidRow(
-                 column(9,
+                 column(7,
                         h4("Output dashboard"), 
                         br(),
-                        plotOutput("results_plot", "400px", width = "600px"),
+                        uiOutput('plot_tabs'),  
+                        # plotOutput("results_plot", "400px", width = "600px"),
                         br(),
                         p("Figure 1: A histogram of the number of collisions per year for each iteration. 
                           The heights of the bars show the relative frequency of each value. 
                           The line shows the smoothed estimate of the shape of the histogram. 
                           Months for which movement data were provided or available are shown in bold; 
                           only bold months are shown in histogram of annual collisions.", 
-                          style = "margin-left: 8px; font-size: 12px; margin-right: 40px")
+                          style = "margin-left: 1px; margin-right: 10px; font-size: 14px")
                  ), 
                  #buttons for sensitivity Analysis, sownloading output, and generating report
-                 column(3,
+                 column(5,
                         h4("Next steps:"), 
                         br(),
                         uiOutput("runGSA2"), 
@@ -447,21 +449,22 @@ server <- function(input, output, session) {
   
   output$user_instructions <- renderText(
   "<h4>INSTRUCTIONS:</h4><br>
-    1) Select the species of interest OR upload your own species data if that option is selected.<br>
+    1) Enter the project name and person conducting the analysis. This will be saved in output.
+    2) Select the species of interest OR upload your own properly formatted species data if that option is selected.<br>
     &nbsp &nbsp Example species input data can be downloaded using the button to the right.<br>
-    2) Check the species data for correct values in the tables and figures below.<br>
-    3) Download the example wind farm inuput data using the button to the right and either modify for your specific use <br>
+    3) Check the species data for correct values in the tables and figures below.<br>
+    4) Download the example wind farm inuput data using the button to the right and either modify for your specific use <br>
     &nbsp or use it directly to demonstrate the use of the tool.<br>
-    4) Upon proper loading of the wind farm data, the wind farm data tab will be shown. <br>
+    5) Upon proper loading of the wind farm data, the wind farm data tab will be shown. <br>
     &nbsp Check the wind farm data for correct values in the include maps and tables. 
     &nbsp Correct any errors and reload as necessary.<br>
-    5) Choose which version of the CRM to run.<br>
-    6) Select the number of iterations (100-10,0000).<br>
-    7) Set a threshold for the maximum acceptable number of collisions.<br>
-    8) Run CRM.<br>
-    9) Run sensitivity analyses (optional).<br>
-    10) Generate summary report and/or download results for each iteration.<br>
-    11) Check the CRM results.")
+    6) Choose which version of the CRM to run.<br>
+    7) Select the number of iterations (100-10,0000).<br>
+    8) Set a threshold for the maximum acceptable number of collisions.<br>
+    9) Run CRM.<br>
+    10) Run sensitivity analyses (optional).<br>
+    11) Generate summary report and/or download results for each iteration.<br>
+    12) Check the CRM results.")
   
   output$check_windfarm_instructions <- renderText(
     "<h4>INSTRUCTIONS:</h4><br>
@@ -481,79 +484,121 @@ server <- function(input, output, session) {
 
   # load labels to display versions of species names without underscores
   SpeciesLabels <- read.table("data/SpeciesLabels.csv", sep =",")
+  
+  
+  # spp_by_turbines <- reactiveValues()
 
   # main plot for annual collisions
   # ATG - modified to use ggplot instead as it's easier and a lot more sophisticated then base plot
-  observeEvent(input$run, {output$results_plot <- renderPlot({
-    if(!is.null(CRM_fun()$monthCollsnReps_opt1)){
-      if(sum(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][1]]][[1]], na.rm=TRUE)>0){
-        NA_index <- which(is.na(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][1]]][[1]][1,]))
-        outvector <- round(rowSums(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][1]]][[1]], na.rm = TRUE))
-        month_lab <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-        
-        xmin <- round(min(outvector, na.rm=TRUE))
-        xmax <- round(max(outvector, na.rm=TRUE))
-        # print(paste("outvector",outvector))
-        # print(paste(xmin, xmax))
-        if (sum(outvector)==0){
-          #no collisions provide a modified figure
-          no_coll = T
-          plot_xmin = 0
-          plot_xmax = 10
-          plot_ymin = 0
-          plot_ymax = 10
-          x_ann = 5
-          y_ann = 5
-          fig_text = "No collisions predicted"
-          
-        } else {
-          plot_xmin = -0.5
-          plot_xmax = NA
-          plot_ymin = 0
-          plot_ymax = NA
-          x_ann = 0
-          y_ann = 0
-          fig_text = ""
-        }
-          
-        if(length(which(SpeciesLabels[,1] == CRM_fun()[['CRSpecies']][1]))>0){
-          main_label <- SpeciesLabels[SpeciesLabels[,1] == CRM_fun()[['CRSpecies']][1], 2]
-        }else{
-          main_label <- CRM_fun()[['CRSpecies']][1]
-        }
-        
-        bold <- rep(2, 12)
-        month_col <- rep("dark blue", 12)
-        month_col[NA_index] <- rgb(0, 0, 0, 0.8)
-        bold[NA_index] <- 1 # make bold those months with data
-        p1 <- ggplot2::ggplot(data.frame(outvector=outvector), aes(outvector)) + 
-          #center on integers use binwidth = 1 and center = 0; but modified to make bar end at number for thresholding
-          stat_bin(bins=12, aes(y = stat(count / sum(count))), col="darkgreen", fill="darkgreen", binwidth = 1, center = 0) +
-          geom_density(adjust=2) +  #create a kernel density curve
-          ggtitle(main_label) +
-          xlim(c(plot_xmin, plot_xmax)) +
-          ylim(c(plot_ymin, plot_ymax)) +
-          xlab("Total collisions over months highlighted below") +
-          annotate("text", x=x_ann, y=y_ann, label = fig_text) +
-          annotate("rect", xmin=-0.5, xmax=input$inputthreshold, ymin=0, ymax=1, fill=rgb(1, 1, 1, 0.65), col=rgb(0, 0, 0, 0)) +
-          geom_vline(xintercept = input$inputthreshold, color = "red", linetype = "dashed") +
-          annotate("text", x=input$inputthreshold, y=0.5, col="red", label = "Input threshold", angle=90, vjust=1.5) +
-          theme_classic() + 
-          theme(axis.title.y = element_blank(),
-                axis.ticks.y = element_blank(),
-                axis.text.y = element_blank()
-                )
-        
-        cowplot::ggdraw(cowplot::add_sub(p1, label = month_lab, x=seq(0.1,0.9,0.8/11), color = month_col, size = 10, fontface = bold))
+  # observeEvent(input$run, {output$results_plot <- renderPlot({
+  # results_plots <- reactiveValues()
+  results_plots <- eventReactive(input$run, {
       
-      }else{
-        par(mar=c(4, 4.5, 3, 1))
-        plot(1:1, col="white", xlim=c(0, 10), ylim=c(0, 10), xaxt="n", yaxt="n", xlab=" ", ylab=" ", bty="n")
-        text(4, 5, "Option not run", cex=2, adj=c(0.5, 0.5))
-        box(which="outer")
+    num_species <- length(isolate(CRM_fun()[['CRSpecies']]))
+    num_turb_mods <- length(isolate(CRM_fun()[['Turbines']]))
+    
+    # spp_by_turbines$num_species <- length(CRM_fun()[['CRSpecies']])
+    # spp_by_turbines$num_turb_mods <- length(CRM_fun()[['Turbines']])
+    # spp_by_turbines$combos <-  isolate(spp_by_turbines$num_species * spp_by_turbines$num_turb_mods)
+    
+    plot_list = list()
+    n = 1
+    for(q in 1:num_species) {
+      for(i in 1:num_turb_mods) {
+       if(!is.null(CRM_fun()$monthCollsnReps_opt1)){
+         # ATG - an issue with plots not rendering in dynamic tabs; use local to get output correct
+         # https://stackoverflow.com/questions/31993704/storing-ggplot-objects-in-a-list-from-within-loop-in-r
+         # main_label <- ""
+         plot_list[[n]] <- local({if(sum(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][q]]][[i]], na.rm=TRUE)>0){
+            n = n
+            NA_index <- which(is.na(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][q]]][[i]][1,]))
+            outvector <- round(rowSums(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][q]]][[i]], na.rm = TRUE))
+            month_lab <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+            
+            xmin <- round(min(outvector, na.rm=TRUE))
+            xmax <- round(max(outvector, na.rm=TRUE))
+            if (sum(outvector)==0){
+              #no collisions provide a modified figure
+              no_coll = T
+              plot_xmin = 0
+              plot_xmax = 10
+              plot_ymin = 0
+              plot_ymax = 10
+              x_ann = 5
+              y_ann = 5
+              fig_text = "No collisions predicted"
+              
+            } else {
+              plot_xmin = -0.5
+              plot_xmax = NA
+              plot_ymin = 0
+              plot_ymax = NA
+              x_ann = 0
+              y_ann = 0
+              fig_text = ""
+            }
+            
+            #main plot title
+            if(length(which(SpeciesLabels[,q] == CRM_fun()[['CRSpecies']][q]))>0){
+              main_label <- paste(SpeciesLabels[SpeciesLabels[,1] == CRM_fun()[['CRSpecies']][q], 2], " (turbine model ", CRM_fun()[['Turbines']][i], ")", sep="")
+            }else{
+              main_label <- paste(CRM_fun()[['CRSpecies']][q],  " (turbine model ", CRM_fun()[['Turbines']][i], " MW)", sep="")
+            }
+            
+            bold <- rep(2, 12)
+            month_col <- rep("dark blue", 12)
+            month_col[NA_index] <- rgb(0, 0, 0, 0.8)
+            bold[NA_index] <- 1 # make bold those months with data
+            p1 <- ggplot2::ggplot(data.frame(outvector=outvector), aes(outvector)) + 
+              #center on integers use binwidth = 1 and center = 0; but modified to make bar end at number for thresholding
+              stat_bin(bins=12, aes(y = stat(count / sum(count))), col="darkgreen", fill="darkgreen", binwidth = 1, center = 0) +
+              geom_density(adjust=2) +  #create a kernel density curve
+              ggtitle(main_label) +
+              xlim(c(plot_xmin, plot_xmax)) +
+              ylim(c(plot_ymin, plot_ymax)) +
+              xlab("Total collisions over months highlighted below") +
+              annotate("text", x=x_ann, y=y_ann, label = fig_text) +
+              annotate("rect", xmin=-0.5, xmax=input$inputthreshold, ymin=0, ymax=1, fill=rgb(1, 1, 1, 0.65), col=rgb(0, 0, 0, 0)) +
+              geom_vline(xintercept = input$inputthreshold, color = "red", linetype = "dashed") +
+              annotate("text", x=input$inputthreshold, y=0.5, col="red", label = "Input threshold", angle=90, vjust=1.5) +
+              theme_classic() + 
+              theme(axis.title.y = element_blank(),
+                    axis.ticks.y = element_blank(),
+                    axis.text.y = element_blank()
+              )
+            
+            p2 <- cowplot::ggdraw(cowplot::add_sub(p1, label = month_lab, x=seq(0.1,0.9,0.8/11), color = month_col, size = 10, fontface = bold))
+            
+          } else {
+            # main_label  <<-  "Option not run"
+            p2 <- ggplot() +
+              theme_void() +
+              geom_text(aes(0,0,label="This plot left intentionally blank.\nOption not run.")) +
+              xlab(NULL) #optional, but safer in case another theme is applied later
+          }
+          # Add plot to list to render in each tab
+          print(p2)
+         })
+         # names(plot_list[[n]]) <- main_label
+         n = n + 1
+       }
       }
     }
+    return(plot_list)
   })
+
+  
+  output$plot_tabs = renderUI({
+    nTabs = length(isolate(results_plots()))
+    histTabs = lapply(1:nTabs, function(x) {
+      # plot_name <- names(results_plots()[[x]])[[1]]
+      tabPanel(paste('Run', x),
+               renderPlot(results_plots()[[x]], height = 600))
+      # tabPanel(title=plot_name, value=x, 
+      #          renderPlot(results_plots()[[x]]))
+      
+    })
+    do.call(tabsetPanel, histTabs)
   })
   
   prob_exceed_threshold <- eventReactive(input$run, {
@@ -710,7 +755,6 @@ server <- function(input, output, session) {
     #issue with zero inflated bins - need to generate non-zero quants
     non_zero_mean <- spp_move_data()$mean[spp_move_data()$mean>0]
     mean_bins <- c(0, quantile(non_zero_mean, probs=seq(0,1,1/8)))
-    print(mean_bins)
     colorBin("YlOrRd", spp_move_data()$mean, bins = mean_bins)
   })
   CIpal <- reactiveVal()
@@ -718,7 +762,6 @@ server <- function(input, output, session) {
     #issue with zero inflated bins - need to generate non-zero quants
     non_zero_CIrange <- spp_move_data()$CI_range[spp_move_data()$CI_range>0]
     CI_bins <- c(0, quantile(non_zero_CIrange, probs=seq(0,1,1/8)))
-    print(CI_bins)
     colorBin("Purples", spp_move_data()$CI_range, bins = CI_bins)
   })
   
@@ -1008,7 +1051,6 @@ server <- function(input, output, session) {
       loc_match[2] <- which(unlist(loc_match_dists) == min(unlist(loc_match_dists)))[1]
       loc_match[3] <- cell_match[which(unlist(loc_match_dists) == min(unlist(loc_match_dists)))[1],'area']
     }
-    # print(paste("loc_match",loc_match))
     loc_match
   })
 
@@ -1149,7 +1191,7 @@ server <- function(input, output, session) {
       return(NULL)
     running(TRUE)
     run_times$start <- Sys.time()
-    output$run_start_txt <- renderText(paste0("The model run was started at: ", strftime(run_times$start, "%Y-%m-%d %H:%M:%S")))
+    output$run_start_txt <- renderText(paste0("The model run was started at: ", strftime(run_times$start, "%Y-%m-%d %H:%M:%S %Z")))
     movement_type2 <- movement_type()
     speciesreact2 <- speciesreact()
     radioreact2 <- radioreact()
@@ -1211,7 +1253,7 @@ server <- function(input, output, session) {
       progress$close()
       running(FALSE) # done with run
       run_times$end <- Sys.time()
-      output$run_end_txt <- renderText(paste0("The model run was completed at: ", strftime(run_times$end, "%Y-%m-%d %H:%M:%S")))
+      output$run_end_txt <- renderText(paste0("The model run was completed at: ", strftime(run_times$end, "%Y-%m-%d %H:%M:%S %Z")))
       # run_elaps_time <- run_end_time - run_start_time
       # output$study_design_report_txt <- renderPrint(CRM_fun())
       updateTabItems(session, inputId = "tabsetpan", selected = "crm_results")
@@ -1384,7 +1426,7 @@ server <- function(input, output, session) {
       # case we don't have write permissions to the current working dir (which
       # can happen when deployed).
       tempReport <- file.path(tempdir(), "report_BRI_v2.Rmd")
-      img1 <- file.path(tempdir(), "SCRAM_logo_400px.png")
+      img1 <- file.path(tempdir(), "SCRAM_logo_2_4inch.jpg")
       img2 <- file.path(tempdir(), "BRI_color_logo_no_words.png")
       img3 <- file.path(tempdir(), "URI.png")
       img4 <- file.path(tempdir(), "USFWS.png")
@@ -1393,7 +1435,7 @@ server <- function(input, output, session) {
       file.copy("report_BRI_v2.Rmd", tempReport, overwrite = TRUE)
       # need to copy images to temp dir otherwise can't be found 
       # see: (https://stackoverflow.com/questions/35800883/using-image-in-r-markdown-report-downloaded-from-shiny-app?rq=1)
-      file.copy("www/SCRAM_logo_400px.png", img1, overwrite = TRUE) 
+      file.copy("www/SCRAM_logo_2_4inch.jpg", img1, overwrite = TRUE) 
       file.copy("www/BRI_color_logo_no_words.png", img2, overwrite = TRUE) 
       file.copy("www/URI.png", img3, overwrite = TRUE) 
       file.copy("www/USFWS.png", img4, overwrite = TRUE) 
