@@ -21,7 +21,7 @@
 
 
 source("helpers.R")
-SCRAM_version = "0.74 - Eupatorium"
+SCRAM_version = "0.74.1 - Eupatorium"
 # run_start_time = NA
 # run_end_time = NA
 options(shiny.trace = F)
@@ -190,7 +190,7 @@ ui <- dashboardPage(
           step = NA,
           width = '50%'),
         hr(),
-        h4("4) Run CRM:", style = "padding-left: 10px;"),
+        h4("5) Run CRM:", style = "padding-left: 10px;"),
         fluidRow(column(4, 
                         uiOutput("runui")), 
                  column(4, 

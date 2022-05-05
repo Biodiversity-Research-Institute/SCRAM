@@ -322,7 +322,7 @@ for(q in 1:num_species){
           fig_text = "No collisions predicted"
           
         } else {
-          plot_xmin = -0.5
+          plot_xmin = 0
           plot_xmax = NA
           plot_ymin = 0
           plot_ymax = NA
@@ -484,6 +484,7 @@ for(q in 1:num_species){
       geom_text(data=model_100_summary, aes(x=month, y=y_limit*0.9, label=mean_95CI), hjust=0.9) +
       ggtitle(main_label) +
       ylab("Number of collisions/month") +
+      scale_y_continuous(limits = c(0, y_limit), oob = scales::squish) +
       expand_limits(y=y_limit) +
       coord_flip() +
       scale_colour_manual(values = c("darkred", "blue")) +
