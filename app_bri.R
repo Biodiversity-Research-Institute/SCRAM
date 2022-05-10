@@ -18,10 +18,11 @@
 #   Create probability of occurrence polygons layers for PIPL, REKN, ROST from baked data files for mapping
 # 27 April 22 - recreated output report using DPLYR and ggplot to simplify
 # 05 May 22 - fixed issues with report and output tables to tabs in results figure 
+# 10 May 22 - 0.74.3 - table reorganization in output
 
 
 source("helpers.R")
-SCRAM_version = "0.74.2 - Eupatorium"
+SCRAM_version = "0.74.3 - Fagus"
 # run_start_time = NA
 # run_end_time = NA
 options(shiny.trace = F)
@@ -120,11 +121,12 @@ ui <- dashboardPage(
   
   dashboardSidebar(
     collapsed = F,
-    width=400,
+    width=415,
     title= 
   
     sidebarMenu(
       id = "sidebar",
+      style = "overflow-y:scroll; max-height: 800px; position:relative;",
       tags$a(
         img(src = "SCRAM_logo_400px.png", alt="Stochastic Collision Risk Assessment for Movement", width = "400px", class="header_img"),
         href = 'https://briwildlife.org/SCRAM',
@@ -134,8 +136,8 @@ ui <- dashboardPage(
       ),
       
       h4("1) SCRAM run details:", style = "padding-left: 10px; margin-bottom: 0px"),
-      textInput(inputId = "project_name", label = "Project name: ", value = "", width = "320px", placeholder = "Project"),
-      textInput(inputId = "modeler", label = "Name of person running SCRAM: ", value = "", width = "320px", placeholder = "Name"),
+      textInput(inputId = "project_name", label = "Project name: ", value = "", width = "360px", placeholder = "Project"),
+      textInput(inputId = "modeler", label = "Name of person running SCRAM: ", value = "", width = "360px", placeholder = "Name"),
       
       conditionalPanel( 
         #show only when project names entered
@@ -154,7 +156,7 @@ ui <- dashboardPage(
           fileInput("file_spp_param", "Upload species data and flight height distributions", accept = ".csv", multiple = TRUE, width = '90%')
           ),
         # checkboxInput("confirm_species_data", "Confirm check of species data"),
-        hr(),
+        # hr(),
         # verbatimTextOutput("debug"),
       ),
       #################Enter wind farm parameters
@@ -167,7 +169,7 @@ ui <- dashboardPage(
         fileInput("file_wf_param", "Upload wind farm data", accept = c('text/csv', 
                                                              'text/comma-separated-values,text/plain', 
                                                              '.csv'), width = '95%'),
-        hr(),
+        # hr(),
       ),
       
       #################Enter CRM options
@@ -179,7 +181,7 @@ ui <- dashboardPage(
                      c("Yes" = "3", "No (faster)" = "1")),
         sliderInput("slider1", label = "Iterations", min = 100, 
                     max = 10000, value = 100, step=100, width = '95%'), 
-        htmlOutput("message", style = "margin-left: 20px"),
+        htmlOutput("message", style = "margin-left: 10px"),
         br(),
         numericInput(
           inputId = "inputthreshold",
@@ -189,7 +191,7 @@ ui <- dashboardPage(
           max = NA,
           step = NA,
           width = '50%'),
-        hr(),
+        # hr(),
         h4("5) Run CRM:", style = "padding-left: 10px;"),
         fluidRow(column(4, 
                         uiOutput("runui")), 
@@ -210,10 +212,10 @@ ui <- dashboardPage(
     tabsetPanel(
       id = "tabsetpan",
       type = "tabs",
-      selected = "species_panel",
+      selected = "start",
       tabPanel(
-        "Species Data",
-        value = "species_panel",
+        "Start Here",
+        value = "start",
         fluidRow(
           box(
             # title = "Instructions",
@@ -238,7 +240,16 @@ ui <- dashboardPage(
               )
             )
           ) 
-        ),
+        ), 
+        fluidRow(
+          p("This tool was developed by Biodiversity Research Institute, The University of Rhode Island, and 
+                    U.S. Fish and Wildlife Service with funding from the Bureau of Ocean Energy Management.", 
+            style = "margin: 20px; color: steelblue; font-size: 16px")
+      )),
+      tabPanel(
+        "Species Data",
+        value = "species_panel",
+        
         fluidRow(
           #show the species data prior to modeling for checks
           column(6,
@@ -255,26 +266,50 @@ ui <- dashboardPage(
           #Show the flight height data raw and as figure to help to make sure user check these before running
           column(6,
                  fluidRow(
-                   box(
-                     title = "Flight Height Data Plot",
-                     status = "primary",
-                     solidHeader = TRUE,
-                     width = 12,
-                     plotOutput("flt_ht_plot")
-                   )
-                 ),
-                 fluidRow(
-                   box(
-                     title = "Flight Height Data Summary",
-                     status = "success",
-                     solidHeader = TRUE,
-                     width = 12,
-                     dataTableOutput("flt_ht_data")
-                   )
-                 )
+                   box(title = "Flight Height Data",
+                       status = "primary",
+                       solidHeader = TRUE,
+                       width = 12,
+                    tabsetPanel(
+                     id = "tabsetpan",
+                     type = "tabs",
+                     selected = "flt_ht_plot",
+                     tabPanel(title = "Plot", 
+                              value = "flt_ht_plot",
+                              plotOutput("flt_ht_plot"), 
+                              style = "height:500px; overflow-y: scroll;overflow-x: scroll;"),
+                     tabPanel(title = "Data", 
+                              value = "flt_ht_data",
+                              dataTableOutput("flt_ht_data"),
+                              style = "height:500px; overflow-y: scroll;overflow-x: scroll;"),
+                     ))
+                   
+                 #   box(
+                 #     title = "Flight Height Data Plot",
+                 #     status = "primary",
+                 #     solidHeader = TRUE,
+                 #     width = 12,
+                 #     plotOutput("flt_ht_plot")
+                 #     # tabsetPanel(
+                 #     #   tabPanel("Species specs", dataTableOutput("species_data"),
+                 #     #            style = "height:500px; overflow-y: scroll;overflow-x: scroll;"),
+                 #     #   tabPanel("Turbine Ops Data", dataTableOutput("ops_data"),
+                 #     #            style = "height:500px; overflow-y: scroll;overflow-x: scroll;")
+                 #     # )
+                 #   )
+                 # ),
+                 # fluidRow(
+                 #   box(
+                 #     title = "Flight Height Data Summary",
+                 #     status = "success",
+                 #     solidHeader = TRUE,
+                 #     width = 12,
+                 #     dataTableOutput("flt_ht_data")
+                 #   )
+                 # )
           )
         )
-      ),
+      )), #tabpanel results
         
       tabPanel(
         "Wind Farm Data",
@@ -289,48 +324,58 @@ ui <- dashboardPage(
             htmlOutput("check_windfarm_instructions", style = "margin-top: -14px")
           )
         ),
-        fluidRow(
-          column(7,
-                fluidRow(
-                  # tabBox(
-                  #   title = "Wind Farm Data",
-                  #   id="wf_tab_box",
-                  #   width = 12,
-                  #   
-                  #   # tabPanel("prelim"),
-                  #   uiOutput("wf_runs_tabs")
-                  # ),
-                   box(
-                     title = "Wind Farm Turbine and Project Area Data",
-                     status = "success",
-                     solidHeader = TRUE,
-                     width = 12,
-                     dataTableOutput("wind_farm_data1"),
-                     dataTableOutput("wind_farm_data2"),
-                     dataTableOutput("wind_farm_data3")
-                   )
-                 )
-          ),
+        # fluidRow(
+        #   column(7,
+        #         fluidRow(
+        #            box(
+        #              title = "Wind Farm Turbine and Project Area Data",
+        #              status = "success",
+        #              solidHeader = TRUE,
+        #              width = 12,
+        #              dataTableOutput("wind_farm_data1"),
+        #              dataTableOutput("wind_farm_data2"),
+        #              dataTableOutput("wind_farm_data3")
+        #            )
+        #          )
+        #   ),
+          fluidRow(
+            column(7,
+                   fluidRow(
+                     box(
+                       title = "Wind Farm Data",
+                       status = "success",
+                       solidHeader = TRUE,
+                       width = 12,
+                       tabsetPanel(
+                         tabPanel("Turbine Specs", dataTableOutput("wind_farm_data1"),
+                                  style = "height:500px; overflow-y: scroll;overflow-x: scroll;"),
+                         tabPanel("Turbine Ops Data", dataTableOutput("ops_data"),
+                                  style = "height:500px; overflow-y: scroll;overflow-x: scroll;")
+                         )
+                       )
+                     )
+                   ),
           column(5,
                  fluidRow(
                    box(
-                     title = "Wind Farm Map",
+                     title = "Study Location and Species Densities",
                      status = "primary",
                      solidHeader = TRUE,
                      width = 12,
-                     leafletOutput("studymap", width = "100%")
+                     leafletOutput("studymap", height = "535px", width = "100%")
                    )
                  ))
-        ),
-        fluidRow(
-          box(
-            title = "Wind Farm Monthly Operational Data",
-            status = "primary",
-            solidHeader = TRUE,
-            width = 12,
-            dataTableOutput("ops_data")
-          )
-      )),
+        )
+      #   fluidRow(
+      #     box(
+      #       title = "Wind Farm Monthly Operational Data",
+      #       status = "primary",
+      #       solidHeader = TRUE,
+      #       width = 12,
+      #       dataTableOutput("ops_data")
+      #     )
+      # )
+      ), #tabpanel results
       
       #CRM results tab
       tabPanel("CRM Results", value = "crm_results",
@@ -371,14 +416,6 @@ ui <- dashboardPage(
                         br(),
                         uiOutput("genreport"), 
                  ), 
-               ), 
-               fluidRow(
-                 br(),
-                 br(),
-                 p("This tool was developed by Biodiversity Research Institute, The University of Rhode Island, and 
-                    U.S. Fish and Wildlife Service with funding from the Bureau of Ocean Energy Management.", 
-                    style = "margin: 20px; color: steelblue; font-size: 16px")
-
                )
       )#tabpanel results
     ) 
@@ -601,37 +638,32 @@ server <- function(input, output, session) {
     do.call(tabsetPanel, histTabs)
   })
   
+  # rendetext to report the probability of collisions exceeding a user-specified threshold
+  # Divide the total number of collision results exceeding the threshold, dividided by the total number of runs
   prob_exceed_threshold <- eventReactive(input$run, {
-    if(!is.null(CRM_fun()$monthCollsnReps_opt1)){
-      threshold_text <- length(which(rowSums(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][1]]][[1]], na.rm=TRUE) > input$inputthreshold))/
-              length(rowSums(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][1]]][[1]]))
-      if(threshold_text == 1){
-        threshold_text <- paste("<", isolate(round(1 - 1/input$slider1, log10(input$slider1))), sep=" ")
+    num_species <- length(isolate(CRM_fun()[['CRSpecies']]))
+    num_turb_mods <- length(isolate(CRM_fun()[['Turbines']]))
+    prob_threshold_list <- list()
+    n <- 1
+    for(q in 1:num_species) {
+      for(i in 1:num_turb_mods) {
+        if(!is.null(CRM_fun()$monthCollsnReps_opt1)){
+          threshold_text <- length(which(rowSums(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][1]]][[1]], na.rm=TRUE) > input$inputthreshold))/
+            length(rowSums(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][1]]][[1]]))
+          if(threshold_text == 1){
+            threshold_text <- paste("<", isolate(round(1 - 1/input$slider1, log10(input$slider1))), sep=" ")
+          }
+          if(threshold_text == 0){
+            threshold_text <- paste("<", isolate(round(((1/input$slider1)), log10(input$slider1))), sep=" ")
+          }
+          prob_threshold_list[n] <- threshold_text
+          return(prob_threshold_list)
+        }
       }
-      if(threshold_text == 0){
-        threshold_text <- paste("<", isolate(round(((1/input$slider1)), log10(input$slider1))), sep=" ")
-      }
-      return(threshold_text)
     }
   })
 
-  # rendetext to report the probability of collisions exceeding a user-specified threshold
-  # Divide the total number of collision results exceeding the threshold, dividided by the total number of runs
-  # observeEvent(input$run, {output$prob <- renderText({
-  #   if(!is.null(CRM_fun()$monthCollsnReps_opt1)){
-  #     threshold_text <- length(which(rowSums(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][1]]][[1]], na.rm=TRUE) > input$inputthreshold))/
-  #       length(rowSums(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][1]]][[1]]))
-  #     if(threshold_text == 1){
-  #       threshold_text <- paste("<", isolate(round(1 - 1/input$slider1, log10(input$slider1))), sep=" ")
-  #     }
-  #     if(threshold_text == 0){
-  #       threshold_text <- paste("<", isolate(round(((1/input$slider1)), log10(input$slider1))), sep=" ")
-  #     }
-  #     paste("The probability of exceeding specified threshold is ", threshold_text, ".", sep="")
-  #   }
-  # })
-  # })
-  
+
   output$prob <- renderText(paste0("The probability of exceeding specified threshold (", input$inputthreshold,") is ", prob_exceed_threshold(), "."))
 
   # dialog box for sensitivity analyses
@@ -705,34 +737,95 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$file_wf_param, {
-    Sys.sleep(3)  #wait until species data has rendered and then switch also helps with pre-rendering maps, etc.
+    Sys.sleep(2)  #wait until species data has rendered and then switch also helps with pre-rendering maps, etc.
     updateTabItems(session, inputId = "tabsetpan", selected = "wind_farm_panel")})
 
   #render the wind farm data to the tables on the wind farm data tab
-  output$wind_farm_data1 <- DT::renderDataTable(
-    wind_farm_df() %>%
-      dplyr::select(Run, 2:6, -contains("Op")),
+  output$wind_farm_data1 <- DT::renderDataTable({
+    wf_t <- wind_farm_df() %>%
+        dplyr::select(-contains("Op"))
+    wf_t <- as.data.frame(t(wf_t))
+    colnames(wf_t) <- paste("Run", wf_t[1, ])
+    return(wf_t[-1,, drop = FALSE])
+    },
     options = list(
       dom = 't',
-      scrollX = TRUE
+      paging = FALSE,
+      bSort=FALSE
     ))
   
-  output$wind_farm_data2 <- DT::renderDataTable(
-    wind_farm_df() %>%
-      dplyr::select(Run, 7:10, -contains("Op")),
-    options = list(
-      dom = 't',
-      scrollX = TRUE
-    ))
   
-  output$wind_farm_data3 <- DT::renderDataTable(
-    wind_farm_df() %>%
-      dplyr::select(Run, 11:17, -contains("Op")),
-    options = list(
-      dom = 't',
-      scrollX = TRUE
-    ))
+  # #render the wind farm data to the tables on the wind farm data tab
+  # output$wind_farm_data1 <- DT::renderDataTable(
+  #   wind_farm_df() %>%
+  #     dplyr::select(Run, 2:6, -contains("Op")),
+  #   options = list(
+  #     dom = 't',
+  #     scrollX = TRUE
+  #   ))
+  # 
+  # output$wind_farm_data2 <- DT::renderDataTable(
+  #   wind_farm_df() %>%
+  #     dplyr::select(Run, 7:10, -contains("Op")),
+  #   options = list(
+  #     dom = 't',
+  #     scrollX = TRUE
+  #   ))
+  # 
+  # output$wind_farm_data3 <- DT::renderDataTable(
+  #   wind_farm_df() %>%
+  #     dplyr::select(Run, 11:17, -contains("Op")),
+  #   options = list(
+  #     dom = 't',
+  #     scrollX = TRUE
+  #   ))
   
+  
+  
+  #show the Wind Farm operational data as as table for QA/QC
+  # output$ops_data <-
+  #   DT::renderDataTable(
+  #     DT::datatable({
+  #       ops_data_all <- data.frame()
+  #       for (i in 1:nrow(wind_farm_df())) {
+  #         # run <- row[["run"]]
+  #         row <- wind_farm_df()[i,]
+  #         ops_data <- row %>% 
+  #           dplyr::mutate(Var="MonthOp", Desc="Wind availability (maximum amount of time turbines can be operational/month)") %>% 
+  #           dplyr::select(Run, Var, Desc, matches("Op$")) %>% 
+  #           dplyr::rename_with(~ gsub("Op", "", .x)) #rename to month only  
+  #         
+  #         ops_mean_data <- row %>% 
+  #           dplyr::mutate(Var="MonthOpMean", Desc='Mean time that turbines will not be operational ("Down time").') %>% 
+  #           dplyr::select(Run, Var, Desc, matches("Mean$")) %>% 
+  #           dplyr::rename_with(~ gsub("OpMean", "", .x)) #rename to month only  
+  #         
+  #         ops_SD_data <- row %>% 
+  #           dplyr::mutate(Var="MonthOpSD", Desc="deviation of mean operational time") %>% 
+  #           dplyr::select(Run, Var, Desc, matches("OPSD$")) %>% 
+  #           dplyr::rename_with(~ gsub("OpSD", "", .x))
+  #         
+  #         # ops_data_run <- rbind(ops_data, ops_mean_data, ops_SD_data)
+  #         ops_data_all <- rbind(ops_data_all, ops_data, ops_mean_data, ops_SD_data)
+  #       }
+  #       return(ops_data_all)
+  #       },
+  #       options = list(rownames = FALSE, pagelength=20, dom = 't')
+  #       )
+  #     )
+  
+  #show the Wind Farm operational data as as table for QA/QC
+  output$ops_data <-
+    DT::renderDataTable({
+      ops_data <- turbine_tbl %>% 
+        select(Run, matches("Op", ignore.case=F)) %>% 
+        t()
+      colnames(ops_data) <- paste("Run", ops_data[1, ])
+      return(ops_data[-1, , drop = FALSE])},
+      options = list(dom = 't', 
+                     paging = FALSE,
+                     bSort=FALSE)
+    )
   
   bladeIcon <- makeIcon(
     iconUrl = "www/outline_wind_power_black_36dp.png",
@@ -820,42 +913,9 @@ server <- function(input, output, session) {
         overlayGroups = c("Wind farm", "BOEM wind leases", "BOEM wind planning areas", "Occur. prob.", "CI range"),
         position = "topright", #"topleft",
         options = layersControlOptions(collapsed = TRUE)
-      )
+      ) %>% 
+      hideGroup("CI range")
   })
-  
-
-
-#show the Wind Farm operational data as as table for QA/QC
-  output$ops_data <-
-    DT::renderDataTable(
-      DT::datatable({
-        ops_data_all <- data.frame()
-        for (i in 1:nrow(wind_farm_df())) {
-          # run <- row[["run"]]
-          row <- wind_farm_df()[i,]
-          ops_data <- row %>% 
-            dplyr::mutate(Var="MonthOp", Desc="Wind availability (maximum amount of time turbines can be operational/month)") %>% 
-            dplyr::select(Run, Var, Desc, matches("Op$")) %>% 
-            dplyr::rename_with(~ gsub("Op", "", .x)) #rename to month only  
-          
-          ops_mean_data <- row %>% 
-            dplyr::mutate(Var="MonthOpMean", Desc='Mean time that turbines will not be operational ("Down time").') %>% 
-            dplyr::select(Run, Var, Desc, matches("Mean$")) %>% 
-            dplyr::rename_with(~ gsub("OpMean", "", .x)) #rename to month only  
-          
-          ops_SD_data <- row %>% 
-            dplyr::mutate(Var="MonthOpSD", Desc="deviation of mean operational time") %>% 
-            dplyr::select(Run, Var, Desc, matches("OPSD$")) %>% 
-            dplyr::rename_with(~ gsub("OpSD", "", .x))
-          
-          # ops_data_run <- rbind(ops_data, ops_mean_data, ops_SD_data)
-          ops_data_all <- rbind(ops_data_all, ops_data, ops_mean_data, ops_SD_data)
-        }
-        return(ops_data_all)
-        },
-        options = list(rownames = FALSE, pagelength=20, dom = 't')
-        )
-      )
 
   # data for species characteristics
   tablereact3 <- reactiveValues()
@@ -876,30 +936,43 @@ server <- function(input, output, session) {
     }
   })
   
-  species_data_react <- eventReactive(c(input$file_spp_param, input$species_input), {
-    if(!is.null(input$file_spp_param)){
-    }else{
-      bird_data <- read.csv("data/BirdData.csv", header = T)
-      species_data_row <- reshape2::melt(as.data.table(bird_data[which(bird_data$Species==input$species_input), ]), id.var=NULL)
-      # colnames(species_data_row) <- c("values")
-    }
-    updateTabItems(session, inputId = "tabsetpan", selected = "species_panel")
-    return(species_data_row)
-  })
+  #navigate to species tab once selected
+  observeEvent(input$species_input, 
+               updateTabItems(session, inputId = "tabsetpan", selected = "species_panel")
+               )
+  
+  # species_data_react <- eventReactive(c(input$file_spp_param, input$species_input), {
+  #   if(!is.null(input$file_spp_param)){
+  #   }else{
+  #     bird_data <- read.csv("data/BirdData.csv", header = T)
+  #     # species_data_row <- reshape2::melt(as.data.table(bird_data[which(bird_data$Species==input$species_input), ]), id.var=NULL)
+  #     species_data_row <- as.data.frame(t(bird_data[which(bird_data$Species==input$species_input), ]))
+  #     
+  #     # colnames(species_data_row) <- c("values")
+  #   }
+  #   return(species_data_row)
+  # })
     
     
   output$species_data <-
-    DT::renderDataTable(
-      datatable(
-        species_data_react(),
-        # tablereact3(),
-        selection = list(mode = "single", selected = 1),
-        options = list(
-          paging = FALSE,
-          scrollY = "500px",
-          searching = FALSE
-        )
-      )
+    DT::renderDataTable({
+      if(!is.null(input$file_spp_param)){
+      }else{
+        bird_data <- read.csv("data/BirdData.csv", header = T)
+        # species_data_row <- reshape2::melt(as.data.table(bird_data[which(bird_data$Species==input$species_input), ]), id.var=NULL)
+        species_data_row <- as.data.frame(t(bird_data[which(bird_data$Species==input$species_input), ]))
+        colnames(species_data_row) <- sub("_", " ", species_data_row[1,])
+      }
+      return(species_data_row[-1, , drop = FALSE])
+    },
+    # tablereact3(),
+    # selection = list(mode = "single", selected = 1),
+    options = list(dom = 't', 
+                   paging = FALSE,
+                   bSort=FALSE,
+                   scrollY = "500px",
+                   searching = FALSE
+    )
     )
   
   # flight height distributions
