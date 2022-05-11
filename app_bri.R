@@ -640,35 +640,7 @@ server <- function(input, output, session) {
   
   # rendetext to report the probability of collisions exceeding a user-specified threshold
   # Divide the total number of collision results exceeding the threshold, dividided by the total number of runs
-  # prob_exceed_threshold <- eventReactive(input$run, {
-  #   num_species <- length(isolate(CRM_fun()[['CRSpecies']]))
-  #   num_turb_mods <- length(isolate(CRM_fun()[['Turbines']]))
-  #   prob_threshold_list <- list()
-  #   n <- 1
-  #   for(q in 1:num_species) {
-  #     for(i in 1:num_turb_mods) {
-  #       threshold_text <- ""
-  #       if(!is.null(CRM_fun()$monthCollsnReps_opt1)){
-  #         threshold_text <- length(which(rowSums(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][1]]][[1]], na.rm=TRUE) > input$inputthreshold))/
-  #           length(rowSums(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][1]]][[1]]))
-  #         if(threshold_text == 1){
-  #           threshold_text <- paste("<", isolate(round(1 - 1/input$slider1, log10(input$slider1))), sep=" ")
-  #         }
-  #         if(threshold_text == 0){
-  #           threshold_text <- paste("<", isolate(round(((1/input$slider1)), log10(input$slider1))), sep=" ")
-  #         }
-  #         prob_threshold_list[n] <- threshold_text
-  #         n <-  n + 1
-  #       }
-  #     }
-  #   }
-  #   return(prob_threshold_list)
-  # })
-  # 
-  # 
-  # output$prob <- renderText(paste0("The probability of exceeding specified threshold (", input$inputthreshold,") is ", prob_exceed_threshold(), "."))
-
- output$prob <- renderUI({
+  output$prob <- renderUI({
     num_species <- length(isolate(CRM_fun()[['CRSpecies']]))
     num_turb_mods <- length(isolate(CRM_fun()[['Turbines']]))
     prob_threshold_list <- c()
@@ -1325,7 +1297,8 @@ server <- function(input, output, session) {
     #     survey_data = tablereact12,
     #     runlocal = FALSE
     #   )
-    
+    # Must set seed=T for correct parallel application
+    # https://www.r-bloggers.com/2020/09/future-1-19-1-making-sure-proper-random-numbers-are-produced-in-parallel-processing/
     CRM_fun(NULL)
     fut <- future({
       stochasticBand(
