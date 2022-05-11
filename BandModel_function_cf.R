@@ -364,8 +364,9 @@ stochasticBand <- function(
           ############## STEP TWO - Calculate Flux Factor - the number of birds passing a turbine in each month
           # first calculate turbine frontal area
           # NTurbines = round (TurbineData$TPower[t] / TurbineData$TurbineModel[t]) ### Number of turbines of given Output required to produce target output
-          #BOEM requested that NTurbines be an input instead of total power
-          NTurbines = TurbineData$Num_Turbines
+          # BOEM requested that NTurbines be an input instead of total power
+          # ATG - need to account for each run (differnt parameter runs)
+          NTurbines = TurbineData$Num_Turbines[t]
 
           TotalFrontalArea = NTurbines*sampledTurbine$RotorRadius_m[i]*2
           # cf added an option that changes the rotor area from circular to square to better model the FHD in individual-based options
