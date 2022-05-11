@@ -22,7 +22,7 @@
 
 
 source("helpers.R")
-SCRAM_version = "0.74.3 - Fagus"
+SCRAM_version = "0.74.4 - Ginkgo"
 # run_start_time = NA
 # run_end_time = NA
 options(shiny.trace = F)
@@ -389,7 +389,7 @@ ui <- dashboardPage(
                    textOutput("run_start_txt"),
                    textOutput("run_end_txt"),
                    textOutput("hack"), 
-                   textOutput("prob"), 
+                   htmlOutput("prob"), 
                  )
                ),
                fluidRow(
@@ -630,7 +630,7 @@ server <- function(input, output, session) {
     histTabs = lapply(1:nTabs, function(x) {
       # plot_name <- names(results_plots()[[x]])[[1]]
       tabPanel(paste('Run', x),
-               renderPlot(results_plots()[[x]], height = 600))
+               renderPlot(results_plots()[[x]], height = 400))
       # tabPanel(title=plot_name, value=x, 
       #          renderPlot(results_plots()[[x]]))
       
@@ -640,32 +640,62 @@ server <- function(input, output, session) {
   
   # rendetext to report the probability of collisions exceeding a user-specified threshold
   # Divide the total number of collision results exceeding the threshold, dividided by the total number of runs
-  prob_exceed_threshold <- eventReactive(input$run, {
+  # prob_exceed_threshold <- eventReactive(input$run, {
+  #   num_species <- length(isolate(CRM_fun()[['CRSpecies']]))
+  #   num_turb_mods <- length(isolate(CRM_fun()[['Turbines']]))
+  #   prob_threshold_list <- list()
+  #   n <- 1
+  #   for(q in 1:num_species) {
+  #     for(i in 1:num_turb_mods) {
+  #       threshold_text <- ""
+  #       if(!is.null(CRM_fun()$monthCollsnReps_opt1)){
+  #         threshold_text <- length(which(rowSums(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][1]]][[1]], na.rm=TRUE) > input$inputthreshold))/
+  #           length(rowSums(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][1]]][[1]]))
+  #         if(threshold_text == 1){
+  #           threshold_text <- paste("<", isolate(round(1 - 1/input$slider1, log10(input$slider1))), sep=" ")
+  #         }
+  #         if(threshold_text == 0){
+  #           threshold_text <- paste("<", isolate(round(((1/input$slider1)), log10(input$slider1))), sep=" ")
+  #         }
+  #         prob_threshold_list[n] <- threshold_text
+  #         n <-  n + 1
+  #       }
+  #     }
+  #   }
+  #   return(prob_threshold_list)
+  # })
+  # 
+  # 
+  # output$prob <- renderText(paste0("The probability of exceeding specified threshold (", input$inputthreshold,") is ", prob_exceed_threshold(), "."))
+
+ output$prob <- renderUI({
     num_species <- length(isolate(CRM_fun()[['CRSpecies']]))
     num_turb_mods <- length(isolate(CRM_fun()[['Turbines']]))
-    prob_threshold_list <- list()
+    prob_threshold_list <- c()
     n <- 1
     for(q in 1:num_species) {
       for(i in 1:num_turb_mods) {
+        threshold_text <- ""
         if(!is.null(CRM_fun()$monthCollsnReps_opt1)){
-          threshold_text <- length(which(rowSums(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][1]]][[1]], na.rm=TRUE) > input$inputthreshold))/
-            length(rowSums(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][1]]][[1]]))
+          #add species and turbine input variable to carry the probabilities for each run through
+          threshold_text <- length(which(rowSums(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][q]]][[i]], na.rm=TRUE) > input$inputthreshold))/
+            length(rowSums(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][q]]][[i]]))
           if(threshold_text == 1){
             threshold_text <- paste("<", isolate(round(1 - 1/input$slider1, log10(input$slider1))), sep=" ")
           }
           if(threshold_text == 0){
             threshold_text <- paste("<", isolate(round(((1/input$slider1)), log10(input$slider1))), sep=" ")
           }
-          prob_threshold_list[n] <- threshold_text
-          return(prob_threshold_list)
+          prob_threshold_list[n] <- paste0("Run ", n,": the probability of exceeding specified threshold (", isolate(input$inputthreshold),") is ", threshold_text, ".\n")
+          n <-  n + 1
         }
       }
     }
-  })
-
-
-  output$prob <- renderText(paste0("The probability of exceeding specified threshold (", input$inputthreshold,") is ", prob_exceed_threshold(), "."))
-
+    print(prob_threshold_list)
+    HTML(paste(prob_threshold_list, collapse = " <br> "))
+    })
+  
+  
   # dialog box for sensitivity analyses
   observeEvent(input$runGSA, {
     {showModal(modalDialog(
@@ -817,7 +847,7 @@ server <- function(input, output, session) {
   #show the Wind Farm operational data as as table for QA/QC
   output$ops_data <-
     DT::renderDataTable({
-      ops_data <- turbine_tbl %>% 
+      ops_data <- wind_farm_df() %>% 
         select(Run, matches("Op", ignore.case=F)) %>% 
         t()
       colnames(ops_data) <- paste("Run", ops_data[1, ])
