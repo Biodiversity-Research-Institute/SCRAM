@@ -640,7 +640,7 @@ server <- function(input, output, session) {
   
   # rendetext to report the probability of collisions exceeding a user-specified threshold
   # Divide the total number of collision results exceeding the threshold, dividided by the total number of runs
-  output$prob <- renderUI({
+  prob_exceed_threshold <- eventReactive(input$run, {
     num_species <- length(isolate(CRM_fun()[['CRSpecies']]))
     num_turb_mods <- length(isolate(CRM_fun()[['Turbines']]))
     prob_threshold_list <- c()
@@ -663,8 +663,11 @@ server <- function(input, output, session) {
         }
       }
     }
-    print(prob_threshold_list)
-    HTML(paste(prob_threshold_list, collapse = " <br> "))
+    return(prob_threshold_list)
+  })
+  output$prob <- renderUI({
+    #now render in correct format to output to Shiny with newlines as needed.
+    HTML(paste(prob_exceed_threshold(), collapse = " <br> "))
     })
   
   
