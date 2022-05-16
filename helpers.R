@@ -19,7 +19,6 @@ library(rgdal)
 library(geosphere)
 library(readr)
 library(rgeos)
-# library(rhandsontable)
 library(htmltools)
 library(rmarkdown)
 library(fs)
@@ -36,7 +35,7 @@ library(knitr)
 library(kableExtra)
 library(future)
 library(promises)
-plan(multiprocess)
+plan(multisession)
 
 
 #load the species movement model mean monthly probability data

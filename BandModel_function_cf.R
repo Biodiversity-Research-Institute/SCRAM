@@ -187,7 +187,8 @@ stochasticBand <- function(
   #pb   <- txtProgressBar(1, iter*length(CRSpecies)*nrow(TurbineData), style=3)
   
   ###create overall results summary table###
-  resultsSummary = data.frame(matrix(data = 0, ncol = 8, nrow = length(CRSpecies)*nrow(TurbineData)))
+  # resultsSummary = data.frame(matrix(data = 0, ncol = 8, nrow = length(CRSpecies)*nrow(TurbineData)))
+  resultsSummary = data.frame(matrix(data = NA, ncol = 8, nrow = length(CRSpecies)*nrow(TurbineData)))
   names(resultsSummary) = c("Species", "Turbine", "Option", "Mean", "SD", "CV", "Median", "IQR")
 
   # Start of the species loop -----------------------------------------------    
@@ -292,10 +293,12 @@ stochasticBand <- function(
       tab2 <- tab3 <- tab4 <- tab5 <- tab6 <- tab1
       
       # create objects to store PColl and CollInt 
-      sampledPColl <- data.frame(matrix(data = 0, ncol = 1, nrow = iter))
+      # sampledPColl <- data.frame(matrix(data = 0, ncol = 1, nrow = iter))
+      sampledPColl <- data.frame(matrix(data = NA, ncol = 1, nrow = iter))
       names(sampledPColl) <- "PColl"
       
-      sampledCollInt <- data.frame(matrix(data = 0, ncol = 1, nrow = iter))
+      # sampledCollInt <- data.frame(matrix(data = 0, ncol = 1, nrow = iter))
+      sampledCollInt <- data.frame(matrix(data = NA, ncol = 1, nrow = iter))
       names(sampledCollInt) <- "CollInt"
       
       # sample turbine parameters based on their sampling dists
@@ -528,13 +531,14 @@ stochasticBand <- function(
     # sink()
     
     # return collision replicates as output  ===========
+    # ATG - add Turbines data and Results summary to output
     return(list(monthCollsnReps_opt1 = monthCollsnReps_opt1, monthCollsnReps_opt2 = monthCollsnReps_opt2, 
                 monthCollsnReps_opt3 = monthCollsnReps_opt3, monthCollsnReps_opt4 = monthCollsnReps_opt4, 
                 monthCollsnReps_opt5 = monthCollsnReps_opt5, monthCollsnReps_opt6 = monthCollsnReps_opt6,
-                sampledParamsBird = sampledParamsBird, sampledParamsTurbine = sampledParamsTurbine, 
-                Turbines = TurbineData$TurbineModel_MW, CRSpecies = CRSpecies))
+                sampledParamsBird = sampledParamsBird, sampledParamsTurbine = sampledParamsTurbine,
+                resultsSummary = resultsSummary, Turbines = TurbineData$TurbineModel_MW, CRSpecies = CRSpecies))
+    }
   }
-   }
 }
 
 

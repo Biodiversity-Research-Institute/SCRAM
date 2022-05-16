@@ -80,7 +80,7 @@ cat(paste0("SCRAM - the Stochastic Collision Risk Assessment for Movement versio
           "Modeler: ", params$modeler, "\n",
           "The model run was started at: ",  format(params$run_start_time, "%a %b %d %X %Y %Z"), "\n",
           "The model run was completed at: ",  format(params$run_end_time, "%a %b %d %X %Y %Z"), "\n",
-          "The probability of exceeding specified threshold (", params$threshold,") is: ", params$prob_exceed), sep="")
+          paste0(params$prob_exceed, collapse="\n")), sep = "")
 
 ```
 
@@ -339,7 +339,7 @@ for(q in 1:num_species){
         } else {
           plot_xmin = 0
           plot_xmax = NA
-          plot_ymin = 0
+          plot_ymin = -0.5
           plot_ymax = NA
           x_ann = 0
           y_ann = 0
@@ -359,14 +359,14 @@ for(q in 1:num_species){
         bold[NA_index] <- 1 # make bold those months with data
         p1 <- ggplot(data.frame(outvector=outvector), aes(outvector)) + 
           #center on integers use binwidth = 1 and center = 0; but modified to make bar end at number for thresholding
-          stat_bin(bins=12, aes(y = stat(count / sum(count))), col="darkgreen", fill="darkgreen", binwidth = 1, center = 0.5) +
-          geom_density(adjust=2) +
+          stat_bin(bins=12, aes(y = stat(count / sum(count))), col="darkgreen", fill="darkgreen", binwidth = 1, center = 0) +
+          annotate("rect", xmin=-0.5, xmax=params$threshold, ymin=0, ymax=1, fill=rgb(1, 1, 1, 0.65), col=rgb(0, 0, 0, 0)) +
+          geom_density(adjust=3, trim = T) +
           ggtitle(main_label) +
-          xlim(c(plot_xmin, plot_xmax)) +
+          # xlim(c(plot_xmin, plot_xmax)) +
           ylim(c(plot_ymin, plot_ymax)) +
           xlab("Total collisions over months highlighted below") +
           annotate("text", x=x_ann, y=y_ann, label = fig_text) +
-          annotate("rect", xmin=-0.5, xmax=params$threshold, ymin=0, ymax=1, fill=rgb(1, 1, 1, 0.65), col=rgb(0, 0, 0, 0)) +
           geom_vline(xintercept = params$threshold, color = "red", linetype = "dashed") +
           annotate("text", x=params$threshold, y=0.5, col="red", label = "Input threshold", angle=90, vjust=1.5) +
           theme_classic() + 

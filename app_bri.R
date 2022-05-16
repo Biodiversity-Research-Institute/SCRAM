@@ -19,10 +19,10 @@
 # 27 April 22 - recreated output report using DPLYR and ggplot to simplify
 # 05 May 22 - fixed issues with report and output tables to tabs in results figure 
 # 10 May 22 - 0.74.3 - table reorganization in output
-
+# 12 May 22 - Fixed from issues and rewrote baked movemement files with NAs in months according to when we had movememnt, per Pam Loring
 
 source("helpers.R")
-SCRAM_version = "0.74.4 - Ginkgo"
+SCRAM_version = "0.74.5 - Hydrangea"
 # run_start_time = NA
 # run_end_time = NA
 options(shiny.trace = F)
@@ -63,12 +63,6 @@ ui <- dashboardPage(
       style = "float: left"
     ),
 
-    tags$li(class = "dropdown", 
-            actionLink("bookmark_btt", 
-                       label = NULL, 
-                       icon("bookmark", "fa-2x", lib = "font-awesome"),
-                       style = "padding-top: 10px; padding-bottom: 10px; padding-left: 5px; padding-right: 5px",
-    )),
     # tags$li(class = "dropdown", actionLink("saveInputs_btt", label = NULL, icon("save", "fa-2x", lib = "font-awesome"),
     #                                        style = "padding-top: 10px; padding-bottom: 10px")),
     # tags$li(class = "dropdown", actionLink("restoreInputs_btt", label = NULL, icon("window-restore", "fa-2x", lib = "font-awesome"),
@@ -76,9 +70,9 @@ ui <- dashboardPage(
     tags$li(
       class = "dropdown",
       a(
-        img(src = "BRI_color_logo_no_words.png", height = "36px"),
+        img(src = "BRI_color_logo_no_words.png", height = "40px"),
         href = 'https://briwildlife.org',
-        style = "padding-top: 5px; padding-bottom: 5px;",
+        style = "padding-top: 5px; padding-bottom: 5px; padding-left: 5px;, padding-right: 0px; margin-right: -5px",
         target = '_blank',
         id = "lbl_BRILogoLink"
       ),
@@ -87,9 +81,9 @@ ui <- dashboardPage(
     tags$li(
       class = "dropdown",
       a(
-        img(src = "URI.png", height = "36px"),
+        img(src = "URI.png", height = "40px"),
         href = 'https://URI.edu',
-        style = "padding-top: 5px; padding-bottom: 5px;",
+        style = "padding-top: 5px; padding-bottom: 5px; padding-left: 5px;, padding-right: 0px; margin-right: -15px",
         target = '_blank',
         id = "lbl_URILogoLink"
       ),
@@ -98,9 +92,9 @@ ui <- dashboardPage(
     tags$li(
       class = "dropdown",
       a(
-        img(src = "USFWS.png", height = "36px"),
+        img(src = "USFWS.png", height = "40px"),
         href = 'https://www.fws.gov/',
-        style = "padding-top: 5px; padding-bottom: 5px;",
+        style = "padding-top: 5px; padding-bottom: 5px; padding-left: 5px;, padding-right: 0px; margin-right: -5px",
         target = '_blank',
         id = "lbl_FWSLogoLink"
       ),
@@ -109,9 +103,9 @@ ui <- dashboardPage(
     tags$li(
       class = "dropdown",
       a(
-        img(src = "BOEM.png", height = "36px"),
+        img(src = "BOEM.png", height = "40px"),
         href = 'https://www.BOEM.gov',
-        style = "padding-top: 5px; padding-bottom: 5px",
+        style = "padding-top: 5px; padding-bottom: 5px; padding-left: 5px;, padding-right: 0px; margin-right: -5px",
         target = '_blank',
         id = "lbl_BOEMLogoLink"
       ),
@@ -136,8 +130,9 @@ ui <- dashboardPage(
       ),
       
       h4("1) SCRAM run details:", style = "padding-left: 10px; margin-bottom: 0px"),
-      textInput(inputId = "project_name", label = "Project name: ", value = "", width = "360px", placeholder = "Project"),
-      textInput(inputId = "modeler", label = "Name of person running SCRAM: ", value = "", width = "360px", placeholder = "Name"),
+      textInput(inputId = "project_name", label = "Project name: ", value = "", width = "380px", placeholder = "Project"),
+      div(style = "margin-top: -20px;"),  #reduce space between elements
+      textInput(inputId = "modeler", label = "Name of person running SCRAM: ", value = "", width = "380px", placeholder = "Name"),
       
       conditionalPanel( 
         #show only when project names entered
@@ -179,10 +174,10 @@ ui <- dashboardPage(
         h4("4) Select CRM parameter options:", style = "padding-left: 10px; margin-bottom: 0px"),
         radioButtons("optionradio", "Use complete flight height data?",
                      c("Yes" = "3", "No (faster)" = "1")),
+        div(style = "margin-top: -20px;"),  #reduce space between elements
         sliderInput("slider1", label = "Iterations", min = 100, 
                     max = 10000, value = 100, step=100, width = '95%'), 
-        htmlOutput("message", style = "margin-left: 10px"),
-        br(),
+        htmlOutput("message", style = "margin-top: -10px; margin-left: 10px"),
         numericInput(
           inputId = "inputthreshold",
           label = "Threshold",
@@ -196,7 +191,8 @@ ui <- dashboardPage(
         fluidRow(column(4, 
                         uiOutput("runui")), 
                  column(4, 
-                        uiOutput("cancel")))
+                        uiOutput("cancel"))),
+        br()
       )
   )),
 
@@ -226,9 +222,7 @@ ui <- dashboardPage(
             style = "margin-top: -20px; padding-bottom: 20px",
             fluidRow(
               column(width = 8, htmlOutput("user_instructions", style = "margin-top: -14px")),
-              
-              column(width = 4, 
-                     htmlOutput("downloads"), 
+              column(width = 4, htmlOutput("downloads", style = "margin-top: -14px"), 
                      downloadButton("downloadDataX", "Manual",
                                     style = "margin-bottom: 8px; background-color: gray; color: black; font-weight: bold;"),
                      br(),
@@ -244,7 +238,7 @@ ui <- dashboardPage(
         fluidRow(
           p("This tool was developed by Biodiversity Research Institute, The University of Rhode Island, and 
                     U.S. Fish and Wildlife Service with funding from the Bureau of Ocean Energy Management.", 
-            style = "margin: 20px; color: steelblue; font-size: 16px")
+            style = "margin-left: 20px; margin-right: 20px; margin-top: -10px; color: steelblue; font-size: 14px")
       )),
       tabPanel(
         "Species Data",
@@ -270,46 +264,23 @@ ui <- dashboardPage(
                        status = "primary",
                        solidHeader = TRUE,
                        width = 12,
-                    tabsetPanel(
-                     id = "tabsetpan",
-                     type = "tabs",
-                     selected = "flt_ht_plot",
-                     tabPanel(title = "Plot", 
-                              value = "flt_ht_plot",
-                              plotOutput("flt_ht_plot"), 
-                              style = "height:500px; overflow-y: scroll;overflow-x: scroll;"),
-                     tabPanel(title = "Data", 
-                              value = "flt_ht_data",
-                              dataTableOutput("flt_ht_data"),
-                              style = "height:500px; overflow-y: scroll;overflow-x: scroll;"),
-                     ))
-                   
-                 #   box(
-                 #     title = "Flight Height Data Plot",
-                 #     status = "primary",
-                 #     solidHeader = TRUE,
-                 #     width = 12,
-                 #     plotOutput("flt_ht_plot")
-                 #     # tabsetPanel(
-                 #     #   tabPanel("Species specs", dataTableOutput("species_data"),
-                 #     #            style = "height:500px; overflow-y: scroll;overflow-x: scroll;"),
-                 #     #   tabPanel("Turbine Ops Data", dataTableOutput("ops_data"),
-                 #     #            style = "height:500px; overflow-y: scroll;overflow-x: scroll;")
-                 #     # )
-                 #   )
-                 # ),
-                 # fluidRow(
-                 #   box(
-                 #     title = "Flight Height Data Summary",
-                 #     status = "success",
-                 #     solidHeader = TRUE,
-                 #     width = 12,
-                 #     dataTableOutput("flt_ht_data")
-                 #   )
-                 # )
+                       tabsetPanel(
+                         id = "tabsetpan",
+                         type = "tabs",
+                         selected = "flt_ht_plot",
+                         tabPanel(title = "Plot", 
+                                  value = "flt_ht_plot",
+                                  plotOutput("flt_ht_plot"), 
+                                  style = "height:500px; overflow-y: scroll;overflow-x: scroll;"),
+                         tabPanel(title = "Data", 
+                                  value = "flt_ht_data",
+                                  dataTableOutput("flt_ht_data"),
+                                  style = "height:500px; overflow-y: scroll;overflow-x: scroll;"),
+                       )
+                   )
+                 )
           )
-        )
-      )), #tabpanel results
+        )), #tabpanel results
         
       tabPanel(
         "Wind Farm Data",
@@ -324,20 +295,6 @@ ui <- dashboardPage(
             htmlOutput("check_windfarm_instructions", style = "margin-top: -14px")
           )
         ),
-        # fluidRow(
-        #   column(7,
-        #         fluidRow(
-        #            box(
-        #              title = "Wind Farm Turbine and Project Area Data",
-        #              status = "success",
-        #              solidHeader = TRUE,
-        #              width = 12,
-        #              dataTableOutput("wind_farm_data1"),
-        #              dataTableOutput("wind_farm_data2"),
-        #              dataTableOutput("wind_farm_data3")
-        #            )
-        #          )
-        #   ),
           fluidRow(
             column(7,
                    fluidRow(
@@ -366,15 +323,6 @@ ui <- dashboardPage(
                    )
                  ))
         )
-      #   fluidRow(
-      #     box(
-      #       title = "Wind Farm Monthly Operational Data",
-      #       status = "primary",
-      #       solidHeader = TRUE,
-      #       width = 12,
-      #       dataTableOutput("ops_data")
-      #     )
-      # )
       ), #tabpanel results
       
       #CRM results tab
@@ -394,22 +342,18 @@ ui <- dashboardPage(
                ),
                fluidRow(
                  column(7,
-                        h4("Output dashboard"), 
-                        br(),
-                        uiOutput('plot_tabs'),  
-                        # plotOutput("results_plot", "400px", width = "600px"),
-                        br(),
-                        p("Figure 1: A histogram of the number of collisions per year for each iteration. 
-                          The heights of the bars show the relative frequency of each value. 
-                          The line shows the smoothed estimate of the shape of the histogram. 
-                          Months for which movement data were provided or available are shown in bold; 
-                          only bold months are shown in histogram of annual collisions.", 
-                          style = "margin-left: 1px; margin-right: 10px; font-size: 14px")
+                        h4("Output dashboard", style = " margin-top: -10px;"), 
+                        uiOutput("plot_tabs"),
+                        p("Figure 1: A histogram of the number of collisions per year for each iteration.
+                          The heights of the bars show the relative frequency of each value.
+                          The line shows the smoothed estimate of the shape of the histogram.
+                          Months for which movement data were provided or available are shown in bold;
+                          only bold months are shown in histogram of annual collisions.",
+                                                               style = "margin-left: 1px; margin-right: 10px; font-size: 14px")
                  ), 
                  #buttons for sensitivity Analysis, sownloading output, and generating report
                  column(5,
-                        h4("Next steps:"), 
-                        br(),
+                        h4("Next steps:", style = " margin-top: -10px;"), 
                         uiOutput("runGSA2"), 
                         br(),
                         uiOutput("download_output"), 
@@ -485,31 +429,31 @@ server <- function(input, output, session) {
   # output$debug=renderPrint(output$fileUploaded)
   
   output$user_instructions <- renderText(
-  "<h4>INSTRUCTIONS:</h4><br>
-    1) Enter the project name and person conducting the analysis. This will be saved in output.
-    2) Select the species of interest OR upload your own properly formatted species data if that option is selected.<br>
-    &nbsp &nbsp Example species input data can be downloaded using the button to the right.<br>
-    3) Check the species data for correct values in the tables and figures below.<br>
+  "<h4>INSTRUCTIONS:</h4>
+   <p>1) Enter the project name and person conducting the analysis. This will be saved in output. <br>
+    2) Select the species of interest OR upload your own properly formatted species data if that option is selected. <br>
+    &nbsp &nbsp Example species input data can be downloaded using the button to the right. <br>
+    3) Check the species data for correct values in the tables and figures below. <br>
     4) Download the example wind farm inuput data using the button to the right and either modify for your specific use <br>
-    &nbsp or use it directly to demonstrate the use of the tool.<br>
+    &nbsp &nbsp or use it directly to demonstrate the use of the tool. <br>
     5) Upon proper loading of the wind farm data, the wind farm data tab will be shown. <br>
-    &nbsp Check the wind farm data for correct values in the include maps and tables. 
-    &nbsp Correct any errors and reload as necessary.<br>
+    &nbsp &nbsp Check the wind farm data for correct values in the include maps and tables. 
+    &nbsp &nbsp Correct any errors and reload as necessary. <br>
     6) Choose which version of the CRM to run.<br>
     7) Select the number of iterations (100-10,0000).<br>
-    8) Set a threshold for the maximum acceptable number of collisions.<br>
-    9) Run CRM.<br>
-    10) Run sensitivity analyses (optional).<br>
-    11) Generate summary report and/or download results for each iteration.<br>
-    12) Check the CRM results.")
+    8) Set a threshold for the maximum acceptable number of collisions. <br>
+    9) Run CRM. <br>
+    10) Run sensitivity analyses (optional). <br>
+    11) Generate summary report and/or download results for each iteration. <br>
+    12) Check the CRM results.</p>")
   
   output$check_windfarm_instructions <- renderText(
-    "<h4>INSTRUCTIONS:</h4><br>
+    "<h4>INSTRUCTIONS:</h4>
      Check the wind farm data carefully below before running this tool to make sure it's correct.<br>
      Fix any data in your original data file and upload again."
   )
   
-  output$downloads <- renderText("<h4>DOWNLOAD FILES:</h4><br>")
+  output$downloads <- renderText("<h4>DOWNLOAD FILES:</h4>")
   
   # if send email is selected, render text box for entering email address
   observeEvent({req(input$email == TRUE)}, {
@@ -568,7 +512,7 @@ server <- function(input, output, session) {
             } else {
               plot_xmin = 0
               plot_xmax = NA
-              plot_ymin = -0.0001
+              plot_ymin = -0.5
               plot_ymax = NA
               x_ann = 0
               y_ann = 0
@@ -582,6 +526,8 @@ server <- function(input, output, session) {
               main_label <- paste(CRM_fun()[['CRSpecies']][q],  " (turbine model ", CRM_fun()[['Turbines']][i], " MW)", sep="")
             }
             
+            fig.caption <- paste0("Figure ", n,": A histogram of the number of collisions per year for each iteration. The heights of the bars show the relative frequency of each value. The line shows the smoothed estimate of the shape of the histogram. Months for which movement data were provided or available are shown in bold; only bold months are shown in histogram of annual collisions.")
+            
             bold <- rep(2, 12)
             month_col <- rep("dark blue", 12)
             month_col[NA_index] <- rgb(0, 0, 0, 0.8)
@@ -589,22 +535,24 @@ server <- function(input, output, session) {
             p1 <- ggplot2::ggplot(data.frame(outvector=outvector), aes(outvector)) + 
               #center on integers use binwidth = 1 and center = 0; but modified to make bar end at number for thresholding
               stat_bin(bins=12, aes(y = stat(count / sum(count))), col="darkgreen", fill="darkgreen", binwidth = 1, center = 0) +
-              geom_density(adjust=2) +  #create a kernel density curve
+              annotate("rect", xmin=-0.5, xmax=input$inputthreshold, ymin=0, ymax=1, fill=rgb(1, 1, 1, 0.65), col=rgb(0, 0, 0, 0)) +
+              geom_density(adjust=3, trim = T) +  #create a kernel density curve
               ggtitle(main_label) +
-              xlim(c(plot_xmin, plot_xmax)) +
+              # xlim(c(plot_xmin, plot_xmax)) +
               ylim(c(plot_ymin, plot_ymax)) +
               xlab("Total collisions over months highlighted below") +
               annotate("text", x=x_ann, y=y_ann, label = fig_text) +
-              annotate("rect", xmin=-0.5, xmax=input$inputthreshold, ymin=0, ymax=1, fill=rgb(1, 1, 1, 0.65), col=rgb(0, 0, 0, 0)) +
               geom_vline(xintercept = input$inputthreshold, color = "red", linetype = "dashed") +
               annotate("text", x=input$inputthreshold, y=0.5, col="red", label = "Input threshold", angle=90, vjust=1.5) +
               theme_classic() + 
               theme(axis.title.y = element_blank(),
                     axis.ticks.y = element_blank(),
-                    axis.text.y = element_blank()
+                    axis.text.y = element_blank(),
+                    plot.caption = element_text(face = "italic")
               )
             
             p2 <- cowplot::ggdraw(cowplot::add_sub(p1, label = month_lab, x=seq(0.1,0.9,0.8/11), color = month_col, size = 10, fontface = bold))
+            # p3 <- cowplot::ggdraw(cowplot::add_sub(p2,label = str_wrap(fig.caption, width=120, exdent=6),  x=0.05, y=0.85, color = "black", size = 12, hjust = 0, vjust = 0.5))
             
           } else {
             # main_label  <<-  "Option not run"
@@ -624,16 +572,18 @@ server <- function(input, output, session) {
     return(plot_list)
   })
 
-  
+  # ATG - causing flashing in plot - figure out why that is.
+  # Started happening with rebuild of baked movemement was changed
+  # This has something to do with plots telling user they are updating see:
+  # https://github.com/rstudio/shiny/issues/1591
+  # Adding  tags$style(type="text/css", ".recalculating {opacity: 1.0;}" removes this feature
   output$plot_tabs = renderUI({
     nTabs = length(isolate(results_plots()))
     histTabs = lapply(1:nTabs, function(x) {
       # plot_name <- names(results_plots()[[x]])[[1]]
       tabPanel(paste('Run', x),
-               renderPlot(results_plots()[[x]], height = 400))
-      # tabPanel(title=plot_name, value=x, 
-      #          renderPlot(results_plots()[[x]]))
-      
+               renderPlot(results_plots()[[x]]), height = 400, 
+               tags$style(type="text/css", ".recalculating {opacity: 1.0;}"))
     })
     do.call(tabsetPanel, histTabs)
   })
@@ -658,7 +608,7 @@ server <- function(input, output, session) {
           if(threshold_text == 0){
             threshold_text <- paste("<", isolate(round(((1/input$slider1)), log10(input$slider1))), sep=" ")
           }
-          prob_threshold_list[n] <- paste0("Run ", n,": the probability of exceeding specified threshold (", isolate(input$inputthreshold),") is ", threshold_text, ".\n")
+          prob_threshold_list[n] <- paste0("Run ", n,": the probability of exceeding specified threshold (", isolate(input$inputthreshold),") is ", threshold_text, ".")
           n <-  n + 1
         }
       }
@@ -1582,6 +1532,9 @@ server <- function(input, output, session) {
         fnames4zip1 <- list()
         fnames4zip2 <- list()
         fnames4zip3 <- list()
+        fnames4zip4 <- list()
+        fnames4zip5 <- list()
+        
         for(e in 1:length(CRM_fun()[['CRSpecies']])){
           for(w in 1:length(CRM_fun()[['Turbines']])){
             sindex <- CRM_fun()[['CRSpecies']][e]
@@ -1589,19 +1542,21 @@ server <- function(input, output, session) {
             write.csv(CRM_fun()[[as.numeric(input$optionradio)]][[sindex]][[tindex]], file = paste0(tmpdir, "/", sindex, "_", tindex,".csv"), row.names = FALSE)
             write.csv(cbind(CRM_fun()[["sampledParamsTurbine"]][[sindex]][[tindex]],
                             CRM_fun()[["sampledParamsBird"]][[sindex]][[tindex]]), file = paste0(tmpdir, "/", sindex, "_", tindex,"_params.csv"), row.names = FALSE)
-            #write.csv("Sensitivity analyses not run", file = paste0(tmpdir, "/", CRM_fun()[['CRSpecies']][e], "_", paste0("turbModel", CRM_fun()[['Turbines']][w]),"_sensitivity.csv"), row.names = FALSE)
+            # write.csv("Sensitivity analyses not run", file = paste0(tmpdir, "/", CRM_fun()[['CRSpecies']][e], "_", paste0("turbModel", CRM_fun()[['Turbines']][w]),"_sensitivity.csv"), row.names = FALSE)
             fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/", sindex, "_", tindex,".csv", sep=""))
             fnames4zip2 <- c(fnames4zip2, paste0(tmpdir, "/", sindex, "_", tindex,"_params.csv", sep=""))
             fnames4zip3 <- c(fnames4zip3, paste0(tmpdir, "/", CRM_fun()[['CRSpecies']][e], "_", paste0("turbModel", CRM_fun()[['Turbines']][w]),"_sensitivity.csv"))
+            
           }}
-        fnames4zip4 <- list()
+        write.csv(CRM_fun()[["resultsSummary"]], file = paste0(tmpdir, "/resultsSummary.csv"), row.names = FALSE)
+        fnames4zip4 <- c(fnames4zip4, paste0(tmpdir, "/resultsSummary.csv"))
         
         params <- list(SCRAM_version = SCRAM_version, project = input$project_name, modeler = input$modeler, run_start_time = isolate(run_times$start),  run_end_time = isolate(run_times$end), 
                        prob_exceed = isolate(prob_exceed_threshold()), iterations = input$slider1, model_output = CRM_fun(), threshold = input$inputthreshold, option = input$optionradio, species_labels = SpeciesLabels)
         save(params, file = file.path(tmpdir, paste0('SCRAM_model_output_', strftime(isolate(run_times$end), "%Y%m%d_%H%M%S"),'.RData'))) 
-        fnames4zip4 <- c(fnames4zip4, file.path(tmpdir, paste0('SCRAM_model_output_', strftime(isolate(run_times$end), "%Y%m%d_%H%M%S"),'.RData')))
+        fnames4zip5 <- c(fnames4zip5, file.path(tmpdir, paste0('SCRAM_model_output_', strftime(isolate(run_times$end), "%Y%m%d_%H%M%S"),'.RData')))
         
-        utils::zip(zipfile=fname, files=unlist(c(fnames4zip1, fnames4zip2, fnames4zip3, fnames4zip4)), flags = "-r9Xj")
+        utils::zip(zipfile=fname, files=unlist(c(fnames4zip1, fnames4zip2, fnames4zip3, fnames4zip4, fnames4zip5)), flags = "-r9Xj")
         #if(file.exists(paste0(fname, ".zip"))) {file.rename(paste0(fname, ".zip"), fname)}
       },
       contentType = "application/zip"
