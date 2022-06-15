@@ -1,6 +1,7 @@
 library(shiny)
 library(shinyBS)
 library(shinydashboard)
+library(shinyFiles)
 library(dplyr)
 library(tidyverse)
 library(magrittr)
@@ -25,7 +26,7 @@ library(fs)
 library(latexpdf)
 library(Hmisc)
 library(tinytex)
-# library(gmailr)
+library(gmailr)
 library(ipc)
 library(leaflet)
 library(leaflet.esri)
@@ -40,12 +41,11 @@ plan(multisession)
 
 #load the species movement model mean monthly probability data
 #generate all species data
-# data_dir <- "P:/SCRAM/BRI/SCRAM_shiny/data"
 data_dir <- "data"
 
-for (species in c("Red_Knot", "Piping_Plover", "Roseate_Tern")){
-  data_layer <-  paste0(species, "_monthly_prob_BOEM_half_deg")
-  load(file.path(data_dir, paste0(species, "_monthly_prob_BOEM_half_deg.RData")))
+for (species in c("Red_Knot", "Piping_Plover", "Roseate_Tern", "Common_Tern")){
+  data_layer <-  paste0(species, "_monthly_prob_BOEM_half_deg_trunc")
+  load(file.path(data_dir, paste0(species, "_monthly_prob_BOEM_half_deg_trunc.RData")))
   assign(data_layer, spp_monthly_prob_BOEM_half_deg)
 }
 rm(spp_monthly_prob_BOEM_half_deg)

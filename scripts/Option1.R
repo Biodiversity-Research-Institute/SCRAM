@@ -17,7 +17,9 @@ Option1_Transits <- hours$Flux*PCH*Operational
 #Option1_Transits <- hours$Flux*sampledBirdParams$PCH[i]*Operational
 Option1_collisions_No_Avoid <- Option1_Transits*(P_Collision/100)
 
-Option1_CollisionRate <- data.frame(matrix(data = 0, nrow = 12, ncol = 2))
+# Option1_CollisionRate <- data.frame(matrix(data = 0, nrow = 12, ncol = 2))
+# ATG - change 0's no NAs
+Option1_CollisionRate <- data.frame(matrix(data = NA, nrow = 12, ncol = 2))
 names(Option1_CollisionRate) <- c("Month", "Collisions")
 Option1_CollisionRate$Month <- monthLabels
 

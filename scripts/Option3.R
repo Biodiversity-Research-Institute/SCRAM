@@ -41,7 +41,9 @@ CollRiskDist <- CollInt/FluxInt # average collision risk for single rotor transi
 
 # calculate collisions
 Option3_collisions_No_Avoid <- hours$Flux*CollInt*Operational
-Option3_CollisionRate <- data.frame(matrix(data = 0, nrow = 12, ncol = 2))
+# Option3_CollisionRate <- data.frame(matrix(data = 0, nrow = 12, ncol = 2))
+# ATG - change 0's no NAs
+Option3_CollisionRate <- data.frame(matrix(data = NA, nrow = 12, ncol = 2))
 names(Option3_CollisionRate) <- c("Month", "Collisions")
 Option3_CollisionRate$Month <- monthLabels
 

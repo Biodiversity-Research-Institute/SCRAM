@@ -20,9 +20,14 @@
 # 05 May 22 - fixed issues with report and output tables to tabs in results figure 
 # 10 May 22 - 0.74.3 - table reorganization in output
 # 12 May 22 - Fixed from issues and rewrote baked movemement files with NAs in months according to when we had movememnt, per Pam Loring
+# 19 May 22 - Added download folder for automatic saving of results in case of long model runs, but muted as it only works with local file systems which doesn't means
+#   only local file service on remote machines.
+# 25 May 22 - update baked movement models
+# 13 Jun 22 - fully update movement models
+# 15 Jun 22 - remove other species input for later release
 
 source("helpers.R")
-SCRAM_version = "0.74.5 - Hydrangea"
+SCRAM_version = "0.76 - Kalmia"
 # run_start_time = NA
 # run_end_time = NA
 options(shiny.trace = F)
@@ -37,7 +42,14 @@ ui <- dashboardPage(
       actionLink("appvrsn", label = tags$b(paste("Stochastic Collision Risk Assessment for Movement: v", SCRAM_version), style = "font-size: 16px")),
       style = "float: left"
     ),
-    
+    tags$li(
+      class = "dropdown",
+      a(id = "download_manual",
+        icon('fa-solid fa-book', "fa-2x"),
+        style = "padding-top: 10px; padding-bottom: 10px",
+        href = "SCRAM_manual_061522.pdf"),
+      style = "float: left"
+    ),
     tags$li(
       class = "dropdown",
       a(
@@ -111,12 +123,12 @@ ui <- dashboardPage(
       ),
       style = "float: right"
     )
-  ),
+  ), #dashboardHeader
   
   dashboardSidebar(
     collapsed = F,
     width=415,
-    title= 
+    # title= 
   
     sidebarMenu(
       id = "sidebar",
@@ -141,30 +153,28 @@ ui <- dashboardPage(
   
         ################### Input: Select the species to model
         radioButtons(inputId = "species_input",
-                     label ="Select included species data or your own:",
-                     choices = c("Piping Plover" = "Piping_Plover", "Red Knot" = "Red_Knot", "Roseate Tern" = "Roseate_Tern", "Use your own species data" = "Other"),
-                     selected = character(0)), #start with no items selected
-        conditionalPanel(  #only expand if you selected other to hide the load button
-          condition = "input.species_input == 'Other'",
-          # downloadButton("downloadSpeciesExample", "Download example species input", 
-          #                style = "margin-left: 20px; margin-top: 0px; background-color: blue; color: white; font-weight: bold;"), 
-          fileInput("file_spp_param", "Upload species data and flight height distributions", accept = ".csv", multiple = TRUE, width = '90%')
-          ),
-        # checkboxInput("confirm_species_data", "Confirm check of species data"),
-        # hr(),
-        # verbatimTextOutput("debug"),
+                     # label ="Select included species data or your own:",
+                     label ="Select included species:",
+                     # choices = c("Piping Plover" = "Piping_Plover", "Red Knot" = "Red_Knot", "Roseate Tern" = "Roseate_Tern", "Common Tern" = "Common_Tern","Use your own species data" = "Other"),
+                     choices = c("Piping Plover" = "Piping_Plover", "Red Knot" = "Red_Knot", "Roseate Tern" = "Roseate_Tern"),
+                     selected = character(0)) #start with no items selected
+        #Deactivated ability to add Other species for now. Mute below until can be fixed for next version
+        # conditionalPanel(  #only expand if you selected other to hide the load button
+        #   condition = "input.species_input == 'Other'",
+        #   # downloadButton("downloadSpeciesExample", "Download example species input",
+        #   #                style = "margin-left: 20px; margin-top: 0px; background-color: blue; color: white; font-weight: bold;"),
+        #   fileInput("file_spp_param", "Upload species data and flight height distributions", accept = ".csv", multiple = TRUE, width = '90%', options(shiny.maxRequestSize = 25 * 1024^2))
+        #   ),
+
       ),
       #################Enter wind farm parameters
       conditionalPanel( 
         #show only when species data have been inputted
         condition = 'input.species_input',
         h4("3) Load wind farm parameters:", style = "padding-left: 10px; margin-bottom: 0px"),
-        # downloadButton("downloadTurbineExample", "Download example wind farm input", 
-        #                style = "margin-left: 20px; margin-top: 0px; background-color: orange; color: white; font-weight: bold;"),
         fileInput("file_wf_param", "Upload wind farm data", accept = c('text/csv', 
                                                              'text/comma-separated-values,text/plain', 
-                                                             '.csv'), width = '95%'),
-        # hr(),
+                                                             '.csv'), width = '95%')
       ),
       
       #################Enter CRM options
@@ -188,13 +198,20 @@ ui <- dashboardPage(
           width = '50%'),
         # hr(),
         h4("5) Run CRM:", style = "padding-left: 10px;"),
-        fluidRow(column(4, 
+        # Below code to add folder selection for output, but on Shinyapps.io only accesses local directory
+        # div(p("Select an output folder for saving model results:"), style = "padding-left: 12px;"),
+        # shinyDirButton('folder', 'Select folder', 'Select an output folder for saving model results', 
+        #                style = "background-color: orange; color: white; font-weight: bold; text-align: center; padding-left: 12px; margin-bottom: 15px;"),
+        # div(verbatimTextOutput('dirpath', placeholder = T), style = "padding-left: 12px; padding-right: 30px; margin-bottom: 20px; "),
+        
+        fluidRow(column(6, 
                         uiOutput("runui")), 
-                 column(4, 
+                 column(6, 
                         uiOutput("cancel"))),
         br()
       )
-  )),
+  )
+  ), 
 
   dashboardBody(
     # tags$head(
@@ -202,9 +219,9 @@ ui <- dashboardPage(
     #             type = "text/css",
     #             href = "www/style.css")
     # ),
-
+    
     useShinyjs(),
-
+    
     tabsetPanel(
       id = "tabsetpan",
       type = "tabs",
@@ -222,24 +239,31 @@ ui <- dashboardPage(
             style = "margin-top: -20px; padding-bottom: 20px",
             fluidRow(
               column(width = 8, htmlOutput("user_instructions", style = "margin-top: -14px")),
-              column(width = 4, htmlOutput("downloads", style = "margin-top: -14px"), 
-                     downloadButton("downloadDataX", "Manual",
-                                    style = "margin-bottom: 8px; background-color: gray; color: black; font-weight: bold;"),
-                     br(),
-                     downloadButton("downloadSpeciesExample", "Example species input", 
-                                    style = "margin-bottom: 8px; background-color: blue; color: white; font-weight: bold;"), 
-                     br(),
-                     downloadButton("downloadTurbineExample", "Example wind farm input", 
+              # Mute download buttons - for species data for now, don't allow uploading of custom species data
+              # Also move manual to book button
+              column(width = 4, 
+                     htmlOutput("downloads", style = "margin-top: -14px"),
+                     #        downloadButton("downloadDataX", "Manual",
+                     #                       style = "margin-bottom: 8px; background-color: gray; color: black; font-weight: bold;"),
+                     #        br(),
+                     #        downloadButton("downloadSpeciesExample", "Example species input",
+                     #                       style = "margin-bottom: 8px; background-color: blue; color: white; font-weight: bold;"),
+                     #        br(),
+                     downloadButton("downloadTurbineExample", "Example wind farm input",
                                     style = "margin-bottom: 8px; background-color: orange; color: white; font-weight: bold;"),
+                     br(),
+                     img(src = "CVOW_turbines.jpg", width = 200)
               )
             )
-          ) 
-        ), 
-        fluidRow(
-          p("This tool was developed by Biodiversity Research Institute, The University of Rhode Island, and 
+          ), 
+          fluidRow(
+            p("This tool was developed by Biodiversity Research Institute, The University of Rhode Island, and 
                     U.S. Fish and Wildlife Service with funding from the Bureau of Ocean Energy Management.", 
-            style = "margin-left: 20px; margin-right: 20px; margin-top: -10px; color: steelblue; font-size: 14px")
-      )),
+              style = "margin-left: 20px; margin-right: 20px; margin-top: -10px; color: steelblue; font-size: 14px")
+          )
+        )
+      ), #tabpanel
+      
       tabPanel(
         "Species Data",
         value = "species_panel",
@@ -275,13 +299,13 @@ ui <- dashboardPage(
                          tabPanel(title = "Data", 
                                   value = "flt_ht_data",
                                   dataTableOutput("flt_ht_data"),
-                                  style = "height:500px; overflow-y: scroll;overflow-x: scroll;"),
-                       )
+                                  style = "height:500px; overflow-y: scroll;overflow-x: scroll;"))
                    )
                  )
           )
-        )), #tabpanel results
-        
+        )
+      ), #tabpanel Species Data
+      
       tabPanel(
         "Wind Farm Data",
         value = "wind_farm_panel",
@@ -295,23 +319,23 @@ ui <- dashboardPage(
             htmlOutput("check_windfarm_instructions", style = "margin-top: -14px")
           )
         ),
-          fluidRow(
-            column(7,
-                   fluidRow(
-                     box(
-                       title = "Wind Farm Data",
-                       status = "success",
-                       solidHeader = TRUE,
-                       width = 12,
-                       tabsetPanel(
-                         tabPanel("Turbine Specs", dataTableOutput("wind_farm_data1"),
-                                  style = "height:500px; overflow-y: scroll;overflow-x: scroll;"),
-                         tabPanel("Turbine Ops Data", dataTableOutput("ops_data"),
-                                  style = "height:500px; overflow-y: scroll;overflow-x: scroll;")
-                         )
-                       )
+        fluidRow(
+          column(7,
+                 fluidRow(
+                   box(
+                     title = "Wind Farm Data",
+                     status = "success",
+                     solidHeader = TRUE,
+                     width = 12,
+                     tabsetPanel(
+                       tabPanel("Turbine Specs", dataTableOutput("wind_farm_data1"),
+                                style = "height:500px; overflow-y: scroll;overflow-x: scroll;"),
+                       tabPanel("Turbine Ops Data", dataTableOutput("ops_data"),
+                                style = "height:500px; overflow-y: scroll;overflow-x: scroll;")
                      )
-                   ),
+                   )
+                 )
+          ),
           column(5,
                  fluidRow(
                    box(
@@ -323,7 +347,7 @@ ui <- dashboardPage(
                    )
                  ))
         )
-      ), #tabpanel results
+      ), #tabpanel wind farm data
       
       #CRM results tab
       tabPanel("CRM Results", value = "crm_results",
@@ -337,7 +361,7 @@ ui <- dashboardPage(
                    textOutput("run_start_txt"),
                    textOutput("run_end_txt"),
                    textOutput("hack"), 
-                   htmlOutput("prob"), 
+                   htmlOutput("prob")
                  )
                ),
                fluidRow(
@@ -349,33 +373,28 @@ ui <- dashboardPage(
                           The line shows the smoothed estimate of the shape of the histogram.
                           Months for which movement data were provided or available are shown in bold;
                           only bold months are shown in histogram of annual collisions.",
-                                                               style = "margin-left: 1px; margin-right: 10px; font-size: 14px")
+                          style = "margin-left: 1px; margin-right: 10px; font-size: 14px")
                  ), 
-                 #buttons for sensitivity Analysis, sownloading output, and generating report
+                 #buttons for sensitivity Analysis, downloading output, and generating report
                  column(5,
                         h4("Next steps:", style = " margin-top: -10px;"), 
                         uiOutput("runGSA2"), 
                         br(),
                         uiOutput("download_output"), 
                         br(),
-                        uiOutput("genreport"), 
-                 ), 
+                        uiOutput("genreport")
+                 )
                )
-      )#tabpanel results
-    ) 
-  )
-)
-
+      )# tabpanel CRM results
+    ) # tabsetpanel
+  ) #dashboard body
+) #dashboard page
 
 verbose <- F
 
 # Define server logic
 server <- function(input, output, session) {
-  # mute option for receiving results by email until authorization key issue is fixed
-  #  gm_auth_configure(key = "472195874087-13rt4dr5d4772egku8al5iqg74ugv9uj.apps.googleusercontent.com", secret = "2vihbdJYX2KSUTqOlmzGcbru", appname = "gmailr")
-  
-  # mute this after the folder is created for the first time
-  #gm_auth(email = TRUE, cache = "Gmail_oauth.secret")
+  # Send results by email
   
   #  options(
   #    gargle_oauth_cache = "Gmail_oauth.secret",
@@ -421,6 +440,14 @@ server <- function(input, output, session) {
   #  })
   # )
   
+  #Set up directory handling for getting output folder for autosaving data below
+  #BUT Below only works with local file directories :(
+  # dir_roots=c('wd' = '.', 'home', '/home')
+  # dir_roots=getVolumes()()
+  # shinyDirChoose(input, 'folder', roots=dir_roots)
+  # # output$dirpath <- NULL
+  # output$dirpath <- renderText({parseDirPath(roots=dir_roots, input$folder)})
+  
   output$fileUploaded  <- reactive({
     val <- !(is.null(input$file_wf_param))
   })
@@ -431,9 +458,9 @@ server <- function(input, output, session) {
   output$user_instructions <- renderText(
   "<h4>INSTRUCTIONS:</h4>
    <p>1) Enter the project name and person conducting the analysis. This will be saved in output. <br>
-    2) Select the species of interest OR upload your own properly formatted species data if that option is selected. <br>
-    &nbsp &nbsp Example species input data can be downloaded using the button to the right. <br>
-    3) Check the species data for correct values in the tables and figures below. <br>
+    2) Select the species of interest included with SCRAM. <br>
+    3) Check the species data for expected values in the tables and figures in the 'Species Data' tab. If data values are not as <br>
+    expected, do NOT run SCRAM. These values are currently fixed and can't be changed. Future updates should allow custom data. <br>
     4) Download the example wind farm inuput data using the button to the right and either modify for your specific use <br>
     &nbsp &nbsp or use it directly to demonstrate the use of the tool. <br>
     5) Upon proper loading of the wind farm data, the wind farm data tab will be shown. <br>
@@ -453,15 +480,15 @@ server <- function(input, output, session) {
      Fix any data in your original data file and upload again."
   )
   
-  output$downloads <- renderText("<h4>DOWNLOAD FILES:</h4>")
+  output$downloads <- renderText("<h4>DOWNLOAD INPUT FILE(S):</h4>")
   
-  # if send email is selected, render text box for entering email address
-  observeEvent({req(input$email == TRUE)}, {
-    output$user_email_ui <- renderUI({
-      textInput("user_email", label=NULL, value = "asdf@emailclient.com",
-                width = '75%')
-    })
-  })
+  # # if send email is selected, render text box for entering email address
+  # observeEvent({req(input$email == TRUE)}, {
+  #   output$user_email_ui <- renderUI({
+  #     textInput("user_email", label=NULL, value = "asdf@emailclient.com",
+  #               width = '75%')
+  #   })
+  # })
 
   # load labels to display versions of species names without underscores
   SpeciesLabels <- read.table("data/SpeciesLabels.csv", sep =",")
@@ -474,7 +501,6 @@ server <- function(input, output, session) {
   # observeEvent(input$run, {output$results_plot <- renderPlot({
   # results_plots <- reactiveValues()
   results_plots <- eventReactive(input$run, {
-      
     num_species <- length(isolate(CRM_fun()[['CRSpecies']]))
     num_turb_mods <- length(isolate(CRM_fun()[['Turbines']]))
     
@@ -624,9 +650,9 @@ server <- function(input, output, session) {
   # dialog box for sensitivity analyses
   observeEvent(input$runGSA, {
     {showModal(modalDialog(
-      title = "Sensitivity analyses ran successfully",
+      title = "Sensitivity analysis ran successfully",
       footer = modalButton("OK"),
-      paste("Global sensivity analyses for ", option_labels[as.numeric(input$optionradio)], " ran successfully. Results ready to download.", sep="")
+      paste("Global sensivity analysis for ", option_labels[as.numeric(input$optionradio)], " ran successfully. Results ready to download.", sep="")
     ))}
   })
 
@@ -655,18 +681,7 @@ server <- function(input, output, session) {
   source("BandModel_function_cf.R")
   source("scripts/GSA.R")
 
-  # create reactive objects to be used in the main risk computation script, with the ability to update with user inputs
-  # species input
-  speciesreact <- reactiveValues()
-  speciesreact <- eventReactive(c(input$species_input,input$file_spp_param$datapath), {
-    if(length(which(input$species_input=="Other"))==0){
-      input$species_input
-    }else{
-      suppressWarnings(read.table(input$file_spp_param[[which(
-        sapply(1:length(input$file_spp_param$datapath), function(x) length(suppressWarnings(read.table(input$file_spp_param[[x,"datapath"]], header=TRUE, sep = ","))[1,]))
-        == 10)[1],"datapath"]], header=TRUE, sep = ","))[,1]
-    }
-  })
+
   # an object that indexes whether at least one file has been uploaded for both species and turbine data
   bothdataup <- reactiveVal()
   bothdataup  <- eventReactive(c(input$"file_spp_param", input$"file_wf_param"), {length(input$file_spp_param$datapath) > 0&length(input$file_wf_param$datapath) > 0})
@@ -796,7 +811,7 @@ server <- function(input, output, session) {
   spp_move_data <- reactiveVal()
   spp_move_data <- eventReactive(input$species_input, {
     species <- isolate(input$species_input)
-    get(paste0(species, "_monthly_prob_BOEM_half_deg"))
+    get(paste0(species, "_monthly_prob_BOEM_half_deg_trunc"))
   })
   meanpal <- reactiveVal()
   meanpal <- eventReactive(input$species_input, {
@@ -907,11 +922,28 @@ server <- function(input, output, session) {
   #   }
   #   return(species_data_row)
   # })
-    
+  # create reactive objects to be used in the main risk computation script, with the ability to update with user inputs
+  # species input
+  speciesreact <- reactiveValues()
+  speciesreact <- eventReactive(c(input$species_input,input$file_spp_param$datapath), {
+    if(length(which(input$species_input=="Other"))==0){
+      input$species_input
+    }else{
+      suppressWarnings(read.table(input$file_spp_param[[which(
+        sapply(1:length(input$file_spp_param$datapath), function(x) length(suppressWarnings(read.table(input$file_spp_param[[x,"datapath"]], header=TRUE, sep = ","))[1,]))
+        == 10)[1],"datapath"]], header=TRUE, sep = ","))[,1]
+    }
+  })  
     
   output$species_data <-
     DT::renderDataTable({
+      # browser()
+      
       if(!is.null(input$file_spp_param)){
+        #load only first row of data
+        bird_data <- read.csv(input$file_spp_param$datapath, header = T)[1,]
+        species_data_row <- as.data.frame(t(bird_data[which(bird_data$Species==input$species_input), ]))
+        colnames(species_data_row) <- sub("_", " ", species_data_row[1,])
       }else{
         bird_data <- read.csv("data/BirdData.csv", header = T)
         # species_data_row <- reshape2::melt(as.data.table(bird_data[which(bird_data$Species==input$species_input), ]), id.var=NULL)
@@ -1286,6 +1318,9 @@ server <- function(input, output, session) {
       # run_elaps_time <- run_end_time - run_start_time
       # output$study_design_report_txt <- renderPrint(CRM_fun())
       updateTabItems(session, inputId = "tabsetpan", selected = "crm_results")
+      # if (!input$cancel){
+      #   autosave_results()
+      # }
     })
     NULL
   })
@@ -1314,7 +1349,7 @@ server <- function(input, output, session) {
   observeEvent(input$runGSA, {
     for(i in 1:length(CRM_fun()[['CRSpecies']])){
       for(e in 1:length(CRM_fun()[['Turbines']])){
-        write.csv(GSA_fun()[[CRM_fun()[['CRSpecies']][i]]][[CRM_fun()[['Turbines']][e]]], file = paste0(tempdir(), "/", CRM_fun()[['CRSpecies']][i], "_", paste0("turbModel", CRM_fun()[['Turbines']][e]),"_sensitivity.csv"), row.names = FALSE)
+        write.csv(GSA_fun()[[CRM_fun()[['CRSpecies']][i]]][[CRM_fun()[['Turbines']][e]]], file = paste0(tempdir(), "/SCRAM_", CRM_fun()[['CRSpecies']][i], "_", paste0("turbModel", CRM_fun()[['Turbines']][e]),"_sensitivity.csv"), row.names = FALSE)
       }
     }
   })
@@ -1375,8 +1410,8 @@ server <- function(input, output, session) {
     #    (length(input$file_wf_param$datapath) > 0&length(input$species_input) > 0&length(which(input$species_input=="Other")) == 0 & nrow(react_latlon())>0))
       {
       output$runui <- renderUI({
-        div(
-          actionButton("run", "Run CRM", style = "margin-left: 20px; margin-top: 0px; background-color: green; color: white; font-weight: bold;"),
+        div(style="display:inline-block; float:right; padding-right: 10px",
+          actionButton("run", "Run CRM", style = "width: 100px; background-color: green; color: white; font-weight: bold;"),
           id="uiinput"
         )
       })
@@ -1406,7 +1441,8 @@ server <- function(input, output, session) {
   observeEvent({req((bothdataup()&length(input$species_input) > 0&react_latlon()[3] == 1)|
                       (length(which(input$species_input == "Other")) == 0&length(input$species_input) > 0&length(input$file_wf_param$datapath) > 0&react_latlon()[3] == 1))}, {
                         output$cancel <- renderUI({
-                          div(actionButton("cancel", "Cancel", style = "margin-left: 20px; margin-top: 0px; background-color: red; color: white; font-weight: bold;"),
+                          div(style="display:inline-block; float:left; padding-left: 10px",
+                              actionButton("cancel", "Cancel", style = "width: 100px; background-color: red; color: white; font-weight: bold;"),
                               id="uiinput2")
                         })
                       })
@@ -1423,16 +1459,16 @@ server <- function(input, output, session) {
   # when results are available, render button for running sensitivity analyses
   observeEvent({req(!is.null(CRM_fun()$monthCollsnReps_opt1))}, {
     output$runGSA2 <- renderUI({
-      actionButton("runGSA", "Run Sensitivity", 
-                   style = "margin-left: 0px; margin-top: 0px; background-color: navy; color: white; font-weight: bold;")
+      actionButton("runGSA", HTML("Run sensitivity <br/> analysis"), 
+                   style = "width: 150px; margin-left: 0px; margin-top: 0px; background-color: navy; color: white; font-weight: bold;")
     })
   })
   
   # when results are available, render button for downloading raw model run data
   observeEvent({req(!is.null(CRM_fun()$monthCollsnReps_opt1))}, {
     output$download_output <- renderUI({
-      downloadButton('downloadDataRaw', 'Download model runs', 
-                     style = "margin-left: 0px; margin-top: 0px; background-color: darkkhaki; color: white; font-weight: bold;")
+      downloadButton("downloadDataRaw", HTML("Download model <br/> results"), 
+                     style = "width: 150px; margin-left: 0px; margin-top: 0px; background-color: darkkhaki; color: white; font-weight: bold;")
     })
   })
 
@@ -1440,12 +1476,44 @@ server <- function(input, output, session) {
   # if results are available, render button for generating report
   observeEvent({req(!is.null(CRM_fun()$monthCollsnReps_opt1))}, {
     output$genreport <- renderUI({
-      downloadButton("report", "Generate report", 
-                     style = "margin-left: 0px; margin-top: 0px; background-color: darkviolet; color: white; font-weight: bold;")
+      downloadButton("report", HTML("Generate output <br/> report"), 
+                     style = "width: 150px; margin-left: 0px; margin-top: 0px; background-color: darkviolet; color: white; font-weight: bold;")
     })
   })
   
-
+  # ATG - Below function only works only local file systems and doesn't translate to shinyapss.io well
+  # autosave_results <- function() {
+  #   #create function to autosave output to pre-selected drive folder on completion of run
+  #     filename = paste0('SCRAM_model_output_', strftime(isolate(run_times$end), "%Y%m%d_%H%M%S"),'.zip')
+  #     fname=file.path(isolate(parseDirPath(roots=dir_roots, input$folder)), filename)
+  #     print(fname)
+  #     tmpdir = tempdir()
+  #     fnames4zip1 <- list()
+  #     
+  #     for(e in 1:length(CRM_fun()[['CRSpecies']])){
+  #       for(w in 1:length(CRM_fun()[['Turbines']])){
+  #         sindex <- CRM_fun()[['CRSpecies']][e]
+  #         tindex <- paste0("turbModel", CRM_fun()[['Turbines']][w])
+  #         write.csv(CRM_fun()[[as.numeric(input$optionradio)]][[sindex]][[tindex]], file = paste0(tmpdir, "/", sindex, "_", tindex,".csv"), row.names = FALSE)
+  #         write.csv(cbind(CRM_fun()[["sampledParamsTurbine"]][[sindex]][[tindex]],
+  #                         CRM_fun()[["sampledParamsBird"]][[sindex]][[tindex]]), file = paste0(tmpdir, "/", sindex, "_", tindex,"_params.csv"), row.names = FALSE)
+  #         # write.csv("Sensitivity analyses not run", file = paste0(tmpdir, "/", CRM_fun()[['CRSpecies']][e], "_", paste0("turbModel", CRM_fun()[['Turbines']][w]),"_sensitivity.csv"), row.names = FALSE)
+  #         fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/", sindex, "_", tindex,".csv", sep=""))
+  #         fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/", sindex, "_", tindex,"_params.csv", sep=""))
+  #         fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/", CRM_fun()[['CRSpecies']][e], "_", paste0("turbModel", CRM_fun()[['Turbines']][w]),"_sensitivity.csv"))
+  #         
+  #       }}
+  #     write.csv(CRM_fun()[["resultsSummary"]], file = paste0(tmpdir, "/resultsSummary.csv"), row.names = FALSE)
+  #     fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/resultsSummary.csv"))
+  #     
+  #     params <- list(SCRAM_version = SCRAM_version, project = input$project_name, modeler = input$modeler, run_start_time = isolate(run_times$start),  run_end_time = isolate(run_times$end), 
+  #                    prob_exceed = isolate(prob_exceed_threshold()), iterations = input$slider1, model_output = CRM_fun(), threshold = input$inputthreshold, option = input$optionradio, species_labels = SpeciesLabels)
+  #     save(params, file = file.path(tmpdir, paste0('SCRAM_model_output_', strftime(isolate(run_times$end), "%Y%m%d_%H%M%S"),'.RData'))) 
+  #     fnames4zip1 <- c(fnames4zip1, file.path(tmpdir, paste0('SCRAM_model_output_', strftime(isolate(run_times$end), "%Y%m%d_%H%M%S"),'.RData')))
+  #     
+  #     utils::zip(zipfile=fname, files=unlist(fnames4zip1), flags = "-r9Xj")
+  # }
+  
   # download handler for report using R Markdown
   output$report <- downloadHandler(
     # for PDF output, change this to "report.pdf"
@@ -1497,7 +1565,7 @@ server <- function(input, output, session) {
     # contentType = "application/pdf"
   )
   
-
+  # Below code needed once we implement other species data inputs
   # download handler for example for turbine data
   output$downloadTurbineExample <- downloadHandler(
     # filename = "TurbineData_example.zip",
@@ -1506,22 +1574,22 @@ server <- function(input, output, session) {
       file.copy("data/TurbineData_inputs_example.zip", file)
     }
   )
-
-  # download handler for example for turbine data
-  output$downloadDataX <- downloadHandler(
-    filename = "SCRAM_documentation_031722.pdf",
-    content = function(file) {
-      file.copy("SCRAM_documentation_031722.pdf", file)
-    }
-  )
-
-  # download handler for example for species data
-  output$downloadSpeciesExample <- downloadHandler(
-    filename = "SpeciesData.zip",
-    content = function(file) {
-      file.copy("data/SpeciesData.zip", file)
-    }
-  )
+  # 
+  # # download handler for example for turbine data
+  # output$downloadDataX <- downloadHandler(
+  #   filename = "SCRAM_documentation_031722.pdf",
+  #   content = function(file) {
+  #     file.copy("SCRAM_documentation_031722.pdf", file)
+  #   }
+  # )
+  # 
+  # # download handler for example for species data
+  # output$downloadSpeciesExample <- downloadHandler(
+  #   filename = "SpeciesData.zip",
+  #   content = function(file) {
+  #     file.copy("data/SpeciesData.zip", file)
+  #   }
+  # )
 
   # download handler for raw results download
   output$downloadDataRaw <-
@@ -1530,33 +1598,29 @@ server <- function(input, output, session) {
       content = function(fname) {
         tmpdir = tempdir()
         fnames4zip1 <- list()
-        fnames4zip2 <- list()
-        fnames4zip3 <- list()
-        fnames4zip4 <- list()
-        fnames4zip5 <- list()
-        
+
         for(e in 1:length(CRM_fun()[['CRSpecies']])){
           for(w in 1:length(CRM_fun()[['Turbines']])){
             sindex <- CRM_fun()[['CRSpecies']][e]
             tindex <- paste0("turbModel", CRM_fun()[['Turbines']][w])
-            write.csv(CRM_fun()[[as.numeric(input$optionradio)]][[sindex]][[tindex]], file = paste0(tmpdir, "/", sindex, "_", tindex,".csv"), row.names = FALSE)
+            write.csv(CRM_fun()[[as.numeric(input$optionradio)]][[sindex]][[tindex]], file = paste0(tmpdir, "/SCRAM_", sindex, "_", tindex,".csv"), row.names = FALSE)
             write.csv(cbind(CRM_fun()[["sampledParamsTurbine"]][[sindex]][[tindex]],
-                            CRM_fun()[["sampledParamsBird"]][[sindex]][[tindex]]), file = paste0(tmpdir, "/", sindex, "_", tindex,"_params.csv"), row.names = FALSE)
+                            CRM_fun()[["sampledParamsBird"]][[sindex]][[tindex]]), file = paste0(tmpdir, "/SCRAM_", sindex, "_", tindex,"_params.csv"), row.names = FALSE)
             # write.csv("Sensitivity analyses not run", file = paste0(tmpdir, "/", CRM_fun()[['CRSpecies']][e], "_", paste0("turbModel", CRM_fun()[['Turbines']][w]),"_sensitivity.csv"), row.names = FALSE)
-            fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/", sindex, "_", tindex,".csv", sep=""))
-            fnames4zip2 <- c(fnames4zip2, paste0(tmpdir, "/", sindex, "_", tindex,"_params.csv", sep=""))
-            fnames4zip3 <- c(fnames4zip3, paste0(tmpdir, "/", CRM_fun()[['CRSpecies']][e], "_", paste0("turbModel", CRM_fun()[['Turbines']][w]),"_sensitivity.csv"))
+            fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/SCRAM_", sindex, "_", tindex,".csv", sep=""))
+            fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/SCRAM_", sindex, "_", tindex,"_params.csv", sep=""))
+            fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/SCRAM_", CRM_fun()[['CRSpecies']][e], "_", paste0("turbModel", CRM_fun()[['Turbines']][w]),"_sensitivity.csv"))
             
           }}
-        write.csv(CRM_fun()[["resultsSummary"]], file = paste0(tmpdir, "/resultsSummary.csv"), row.names = FALSE)
-        fnames4zip4 <- c(fnames4zip4, paste0(tmpdir, "/resultsSummary.csv"))
+        # write.csv(CRM_fun()[["resultsSummary"]], file = paste0(tmpdir, "/SCRAM_results_summary.csv"), row.names = FALSE)
+        # fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/SCRAM_results_summary.csv"))
         
         params <- list(SCRAM_version = SCRAM_version, project = input$project_name, modeler = input$modeler, run_start_time = isolate(run_times$start),  run_end_time = isolate(run_times$end), 
                        prob_exceed = isolate(prob_exceed_threshold()), iterations = input$slider1, model_output = CRM_fun(), threshold = input$inputthreshold, option = input$optionradio, species_labels = SpeciesLabels)
         save(params, file = file.path(tmpdir, paste0('SCRAM_model_output_', strftime(isolate(run_times$end), "%Y%m%d_%H%M%S"),'.RData'))) 
-        fnames4zip5 <- c(fnames4zip5, file.path(tmpdir, paste0('SCRAM_model_output_', strftime(isolate(run_times$end), "%Y%m%d_%H%M%S"),'.RData')))
+        fnames4zip1 <- c(fnames4zip1, file.path(tmpdir, paste0('SCRAM_model_output_', strftime(isolate(run_times$end), "%Y%m%d_%H%M%S"),'.RData')))
         
-        utils::zip(zipfile=fname, files=unlist(c(fnames4zip1, fnames4zip2, fnames4zip3, fnames4zip4, fnames4zip5)), flags = "-r9Xj")
+        utils::zip(zipfile=fname, files=unlist(c(fnames4zip1)), flags = "-r9Xj")
         #if(file.exists(paste0(fname, ".zip"))) {file.rename(paste0(fname, ".zip"), fname)}
       },
       contentType = "application/zip"
