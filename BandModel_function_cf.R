@@ -206,7 +206,10 @@ stochasticBand <- function(
     #  MovementSpec <- MovementData
     #}
     #}else{
-      MovementSpec <- read.csv(paste("data/movements/MovementBaked_", CRSpecies[s], "_", movement_type[2], ".csv", sep=""), header=T)
+      # MovementSpec <- read.csv(paste("data/movements/MovementBaked_", CRSpecies[s], "_", movement_type[2], ".csv", sep=""), header=T)
+    # ATG - use Evan's truncated models
+    MovementSpec <- read.csv(paste("data/movements/MovementBaked_", CRSpecies[s], "_trunc", movement_type[2], ".csv", sep=""), header=T)
+      
     #}
     
     species.dat <- subset(BirdData, Species == CRSpecies[s])
@@ -258,15 +261,22 @@ stochasticBand <- function(
     movement.boot.sample <- sample(movement.boot, iter, replace=T)
     
     # create data frame for bird-related parameters
-    sampledBirdParams = data.frame(matrix(data = 0, ncol = 7, nrow = iter))
+    # sampledBirdParams = data.frame(matrix(data = 0, ncol = 7, nrow = iter))
+    # ATG - change 0's no NAs
+    sampledBirdParams = data.frame(matrix(data = NA, ncol = 7, nrow = iter))
     names(sampledBirdParams) = c("Avoidance", "WingSpan", "BodyLength", "FlightSpeed")
     
     # create data frame for count/density data
-    sampledSpeciesCount = data.frame(matrix(data = 0, ncol = 12, nrow = iter))
+    # sampledSpeciesCount = data.frame(matrix(data = 0, ncol = 12, nrow = iter))
+    sampledSpeciesCount = data.frame(matrix(data = NA, ncol = 12, nrow = iter))
+    # ATG - change 0's no NAs
     names(sampledSpeciesCount) = monthLabels
     
     # create data frame for density data
-    densitySummary=data.frame(matrix(data = 0, ncol = nrow(TurbineData)*3, nrow = iter))
+    # densitySummary=data.frame(matrix(data = 0, ncol = nrow(TurbineData)*3, nrow = iter))
+    # ATG - change 0's no NAs
+    densitySummary=data.frame(matrix(data = NA, ncol = nrow(TurbineData)*3, nrow = iter))
+    
     ##add names of columns later in turbine loop###
     
     # sample bird parameters
@@ -280,7 +290,7 @@ stochasticBand <- function(
       # moved out of t loop to precede day length calculations
       # create data frame for turbine data
       # sampledTurbine <- data.frame(matrix(data = 0, ncol = 18, nrow = iter))  
-      # ATG - CF set data to 0s which may be a problem. Set to NA to see if showing up in data down the line
+      # ATG - data to 0s which may be a problem. Set to NA to see if showing up in data down the line
       sampledTurbine <- data.frame(matrix(data = NA, ncol = 18, nrow = iter))  
       
       names(sampledTurbine) = c("RotorRadius_m", "HubHeight_m", "BladeWidth_m", "WindSpeed_mps", "RotorSpeed_rpm", "Pitch", 
@@ -288,7 +298,9 @@ stochasticBand <- function(
                                 "AugOp", "SepOp", "OctOp", "NovOp", "DecOp")
       
       # create results tables
-      tab1 <- data.frame(matrix(data = 0, ncol = 12, nrow = iter))
+      # tab1 <- data.frame(matrix(data = 0, ncol = 12, nrow = iter))
+      tab1 <- data.frame(matrix(data = NA, ncol = 12, nrow = iter))
+      # ATG - change 0's to NA
       names(tab1) <- monthLabels
       tab2 <- tab3 <- tab4 <- tab5 <- tab6 <- tab1
       
@@ -518,7 +530,7 @@ stochasticBand <- function(
     # write.csv(resultsSummary, paste(results_folder,"tables", "CollisionEstimates.csv", sep="/"))
     
     run.time <- Sys.time() - start.time
-    run.time
+    print(run.time)
     
     # unmute the following 8 lines to save run metadata locally
     # sink(paste(results_folder,"run.time.txt", sep="/"))
