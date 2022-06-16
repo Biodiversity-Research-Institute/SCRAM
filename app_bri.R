@@ -47,11 +47,7 @@ ui <- dashboardPage(
       a(id = "download_manual",
         icon('fa-solid fa-book', "fa-2x"),
         style = "padding-top: 10px; padding-bottom: 10px",
-<<<<<<< HEAD
         href = "SCRAM_manual_061522.pdf"),
-=======
-        href = "SCRAM_user_manual_draft_20220615.pdf"),
->>>>>>> 42a5a81ebbe5a4d520045b7551851868c0b489b3
       style = "float: left"
     ),
     tags$li(
