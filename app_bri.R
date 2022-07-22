@@ -25,13 +25,19 @@
 # 25 May 22 - update baked movement models
 # 13 Jun 22 - fully update movement models
 # 15 Jun 22 - remove other species input for later release
+# 21 Jul 22 - 0.80 - Upate movement and flight height models, bug fixes and improvements based on reviews
 
 source("helpers.R")
-SCRAM_version = "0.76 - Kalmia"
+SCRAM_version = "0.80 - Liatris"
 # run_start_time = NA
 # run_end_time = NA
 options(shiny.trace = F)
 
+##################################################################################################################################################
+##                                                                                                                                              ##
+##                                                              DASHBOARD HEADER                                                                ##
+##                                                                                                                                              ##
+##################################################################################################################################################
 ui <- dashboardPage(
   skin = "green",
   dashboardHeader(
@@ -47,7 +53,8 @@ ui <- dashboardPage(
       a(id = "download_manual",
         icon('fa-solid fa-book', "fa-2x"),
         style = "padding-top: 10px; padding-bottom: 10px",
-        href = "SCRAM_manual_061522.pdf"),
+        target = '_blank',
+        href = "SCRAM_manual_072222.pdf"),
       style = "float: left"
     ),
     tags$li(
@@ -125,6 +132,12 @@ ui <- dashboardPage(
     )
   ), #dashboardHeader
   
+  ##################################################################################################################################################
+  ##                                                                                                                                              ##
+  ##                                                              DASHBOARD SIDEBAR                                                               ##
+  ##                                                                                                                                              ##
+  ##################################################################################################################################################
+  
   dashboardSidebar(
     collapsed = F,
     width=415,
@@ -182,20 +195,20 @@ ui <- dashboardPage(
         #show only when wind farm data have been inputted
         condition = "output.fileUploaded",
         h4("4) Select CRM parameter options:", style = "padding-left: 10px; margin-bottom: 0px"),
-        radioButtons("optionradio", "Use complete flight height data?",
-                     c("Yes" = "3", "No (faster)" = "1")),
+        radioButtons("optionradio", "Band (2012) equivalent CRM options:",
+                     c("Option 1: faster approximation" = "1", "Option 3: slower but more accurate assessment" = "3")),
         div(style = "margin-top: -20px;"),  #reduce space between elements
-        sliderInput("slider1", label = "Iterations", min = 100, 
+        sliderInput("slider1", label = "Model iterations (rec. min. 1,000)", min = 100, 
                     max = 10000, value = 100, step=100, width = '95%'), 
-        htmlOutput("message", style = "margin-top: -10px; margin-left: 10px"),
+        htmlOutput("iter_message", style = "margin-top: -10px; margin-left: 10px"),
         numericInput(
           inputId = "inputthreshold",
-          label = "Threshold",
+          label = "Annual collision threshold",
           value = 0,
           min = 0,
           max = NA,
           step = NA,
-          width = '50%'),
+          width = '75%'),
         # hr(),
         h4("5) Run CRM:", style = "padding-left: 10px;"),
         # Below code to add folder selection for output, but on Shinyapps.io only accesses local directory
@@ -211,7 +224,13 @@ ui <- dashboardPage(
         br()
       )
   )
-  ), 
+  ),
+  
+##################################################################################################################################################
+##                                                                                                                                              ##
+##                                                              DASHBOARD BODY                                                                  ##
+##                                                                                                                                              ##
+##################################################################################################################################################
 
   dashboardBody(
     # tags$head(
@@ -221,6 +240,13 @@ ui <- dashboardPage(
     # ),
     
     useShinyjs(),
+    
+        # adds a indicator on slow load
+    add_busy_spinner(spin = "atom", 
+                     color = "blue",
+                     position = "top-left", 
+                     margins = c("50%", "50%"), 
+                     onstart = T),
     
     tabsetPanel(
       id = "tabsetpan",
@@ -277,8 +303,8 @@ ui <- dashboardPage(
                      status = "primary",
                      solidHeader = TRUE,
                      width = 12,
-                     dataTableOutput("species_data")
-                   )
+                     dataTableOutput("species_data"),
+                                     style = "height:577px; overflow-y: scroll;overflow-x: scroll;")
                  )
           ),
           #Show the flight height data raw and as figure to help to make sure user check these before running
@@ -295,15 +321,32 @@ ui <- dashboardPage(
                          tabPanel(title = "Plot", 
                                   value = "flt_ht_plot",
                                   plotOutput("flt_ht_plot"), 
-                                  style = "height:500px; overflow-y: scroll;overflow-x: scroll;"),
+                                  style = "height:420px; overflow-y: scroll;overflow-x: scroll;"),
                          tabPanel(title = "Data", 
                                   value = "flt_ht_data",
-                                  dataTableOutput("flt_ht_data"),
-                                  style = "height:500px; overflow-y: scroll;overflow-x: scroll;"))
+                                  dataTableOutput("flt_ht_data"))
+                                  #style = "overflow-y: scroll;")
+                         ), #tabsetPanel
+                       column(3, h5("Flight heights displayed (m)", 
+                                    style="margin-top:20px; margin-left:5px; margin-right:5px; margin-bottom:5px")),
+                       column(9, sliderInput("slider_flt_ht", label = "", min = 0, max = 1000, value=c(0,1000),step=25, width = '100%')))
                    )
-                 )
-          )
+                 ) #flight height column
+          ), #species data fluidRow
+        fluidRow(
+          #show the species count data prior to modeling for checks
+          column(12,
+                 fluidRow(
+                   box(
+                     title = "Species Count Data",
+                     status = "primary",
+                     solidHeader = TRUE,
+                     width = 12,
+                     dataTableOutput("count_data"),
+                     htmlOutput("count_notes", style = "margin-top: 0px; margin-left:20px; margin-right:20px; margin-bottom:10px; font-size: 12px")
+                   )))
         )
+
       ), #tabpanel Species Data
       
       tabPanel(
@@ -331,8 +374,7 @@ ui <- dashboardPage(
                        tabPanel("Turbine Specs", dataTableOutput("wind_farm_data1"),
                                 style = "height:500px; overflow-y: scroll;overflow-x: scroll;"),
                        tabPanel("Turbine Ops Data", dataTableOutput("ops_data"),
-                                style = "height:500px; overflow-y: scroll;overflow-x: scroll;")
-                     )
+                                style = "height:500px; overflow-y: scroll;overflow-x: scroll;"))
                    )
                  )
           ),
@@ -345,7 +387,11 @@ ui <- dashboardPage(
                      width = 12,
                      leafletOutput("studymap", height = "535px", width = "100%")
                    )
-                 ))
+                 ), 
+                 fluidRow(
+                   p("\u00B9Mean occup. prob.= mean cumulative daily occupancy probability", 
+                     style = "margin-left: 20px; margin-right: 20px; margin-top: -10px; color: steelblue; font-size: 12px"))
+                 )
         )
       ), #tabpanel wind farm data
       
@@ -360,20 +406,16 @@ ui <- dashboardPage(
                    width = 12,
                    textOutput("run_start_txt"),
                    textOutput("run_end_txt"),
-                   textOutput("hack"), 
-                   htmlOutput("prob")
+                   textOutput("run_success_msg"), 
+                   htmlOutput("prob_exceed_threshold_msg")
                  )
                ),
                fluidRow(
                  column(7,
                         h4("Output dashboard", style = " margin-top: -10px;"), 
                         uiOutput("plot_tabs"),
-                        p("Figure 1: A histogram of the number of collisions per year for each iteration.
-                          The heights of the bars show the relative frequency of each value.
-                          The line shows the smoothed estimate of the shape of the histogram.
-                          Months for which movement data were provided or available are shown in bold;
-                          only bold months are shown in histogram of annual collisions.",
-                          style = "margin-left: 1px; margin-right: 10px; font-size: 14px")
+                        uiOutput("plot_results_caption")
+
                  ), 
                  #buttons for sensitivity Analysis, downloading output, and generating report
                  column(5,
@@ -392,7 +434,12 @@ ui <- dashboardPage(
 
 verbose <- F
 
-# Define server logic
+##################################################################################################################################################
+##                                                                                                                                              ##
+##                                                              Define server logic                                                             ##
+##                                                                                                                                              ##
+##################################################################################################################################################
+
 server <- function(input, output, session) {
   # Send results by email
   
@@ -439,7 +486,7 @@ server <- function(input, output, session) {
   #    }
   #  })
   # )
-  
+
   #Set up directory handling for getting output folder for autosaving data below
   #BUT Below only works with local file directories :(
   # dir_roots=c('wd' = '.', 'home', '/home')
@@ -459,13 +506,13 @@ server <- function(input, output, session) {
   "<h4>INSTRUCTIONS:</h4>
    <p>1) Enter the project name and person conducting the analysis. This will be saved in output. <br>
     2) Select the species of interest included with SCRAM. <br>
-    3) Check the species data for expected values in the tables and figures in the 'Species Data' tab. If data values are not as <br>
+    3) Check the species data for expected values in the tables and figures in the 'Species Data' tab. If data values are not as
     expected, do NOT run SCRAM. These values are currently fixed and can't be changed. Future updates should allow custom data. <br>
-    4) Download the example wind farm inuput data using the button to the right and either modify for your specific use <br>
-    &nbsp &nbsp or use it directly to demonstrate the use of the tool. <br>
-    5) Upon proper loading of the wind farm data, the wind farm data tab will be shown. <br>
-    &nbsp &nbsp Check the wind farm data for correct values in the include maps and tables. 
-    &nbsp &nbsp Correct any errors and reload as necessary. <br>
+    4) Download the example wind farm inuput data using the button to the right and either modify for your specific use
+    or use it directly to demonstrate the use of the tool. <br>
+    5) Upon proper loading of the wind farm data, the wind farm data tab will be shown.
+    Check the wind farm data for correct values in the include maps and tables. 
+    Correct any errors and reload as necessary. <br>
     6) Choose which version of the CRM to run.<br>
     7) Select the number of iterations (100-10,0000).<br>
     8) Set a threshold for the maximum acceptable number of collisions. <br>
@@ -499,10 +546,9 @@ server <- function(input, output, session) {
   # main plot for annual collisions
   # ATG - modified to use ggplot instead as it's easier and a lot more sophisticated then base plot
   # observeEvent(input$run, {output$results_plot <- renderPlot({
-  # results_plots <- reactiveValues()
   results_plots <- eventReactive(input$run, {
-    num_species <- length(isolate(CRM_fun()[['CRSpecies']]))
-    num_turb_mods <- length(isolate(CRM_fun()[['Turbines']]))
+    num_species <- length(CRM_fun()[['CRSpecies']])
+    num_turb_mods <- length(CRM_fun()[['Turbines']])
     
     # spp_by_turbines$num_species <- length(CRM_fun()[['CRSpecies']])
     # spp_by_turbines$num_turb_mods <- length(CRM_fun()[['Turbines']])
@@ -516,7 +562,10 @@ server <- function(input, output, session) {
          # ATG - an issue with plots not rendering in dynamic tabs; use local to get output correct
          # https://stackoverflow.com/questions/31993704/storing-ggplot-objects-in-a-list-from-within-loop-in-r
          # main_label <- ""
-         plot_list[[n]] <- local({if(sum(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][q]]][[i]], na.rm=TRUE)>0){
+         # plot_list[[n]] <- local({if(sum(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][q]]][[i]], na.rm=TRUE)>0){
+         test=CRM_fun()
+         plot_list[[n]] <- local({#if(sum(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][q]]][[i]], na.rm=TRUE)>0){
+             
             n = n
             NA_index <- which(is.na(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][q]]][[i]][1,]))
             outvector <- round(rowSums(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][q]]][[i]], na.rm = TRUE))
@@ -524,6 +573,8 @@ server <- function(input, output, session) {
             
             xmin <- round(min(outvector, na.rm=TRUE))
             xmax <- round(max(outvector, na.rm=TRUE))
+            freq_outvector <- table(outvector)
+            print(freq_outvector)
             if (sum(outvector)==0){
               #no collisions provide a modified figure
               no_coll = T
@@ -536,10 +587,13 @@ server <- function(input, output, session) {
               fig_text = "No collisions predicted"
               
             } else {
-              plot_xmin = 0
-              plot_xmax = NA
-              plot_ymin = -0.5
-              plot_ymax = NA
+              plot_xmin = -1
+              if (xmax + 2 < 10){
+                plot_xmax = 10
+              } else {plot_xmax = xmax + 2}
+              plot_ymin = 0
+              plot_ymax = freq_outvector[[1]]/sum(freq_outvector)*1.1  #calculate frequency of first element to set as max y
+              print(paste("Ymax:", freq_outvector[[1]]/sum(freq_outvector)))
               x_ann = 0
               y_ann = 0
               fig_text = ""
@@ -547,46 +601,39 @@ server <- function(input, output, session) {
             
             #main plot title
             if(length(which(SpeciesLabels[,q] == CRM_fun()[['CRSpecies']][q]))>0){
-              main_label <- paste(SpeciesLabels[SpeciesLabels[,1] == CRM_fun()[['CRSpecies']][q], 2], " (turbine model ", CRM_fun()[['Turbines']][i], ")", sep="")
+              main_label <- paste(SpeciesLabels[SpeciesLabels[,1] == CRM_fun()[['CRSpecies']][q], 2], " (turbine model ", CRM_fun()[['Turbines']][i], " MW)", sep="")
             }else{
               main_label <- paste(CRM_fun()[['CRSpecies']][q],  " (turbine model ", CRM_fun()[['Turbines']][i], " MW)", sep="")
             }
-            
-            fig.caption <- paste0("Figure ", n,": A histogram of the number of collisions per year for each iteration. The heights of the bars show the relative frequency of each value. The line shows the smoothed estimate of the shape of the histogram. Months for which movement data were provided or available are shown in bold; only bold months are shown in histogram of annual collisions.")
-            
+
             bold <- rep(2, 12)
             month_col <- rep("dark blue", 12)
             month_col[NA_index] <- rgb(0, 0, 0, 0.8)
             bold[NA_index] <- 1 # make bold those months with data
             p1 <- ggplot2::ggplot(data.frame(outvector=outvector), aes(outvector)) + 
               #center on integers use binwidth = 1 and center = 0; but modified to make bar end at number for thresholding
-              stat_bin(bins=12, aes(y = stat(count / sum(count))), col="darkgreen", fill="darkgreen", binwidth = 1, center = 0) +
-              annotate("rect", xmin=-0.5, xmax=input$inputthreshold, ymin=0, ymax=1, fill=rgb(1, 1, 1, 0.65), col=rgb(0, 0, 0, 0)) +
-              geom_density(adjust=3, trim = T) +  #create a kernel density curve
+              # stat_bin(bins=12, aes(y = stat(count / sum(count))), col="darkgreen", fill="darkgreen", binwidth = 0.5, center = 0.5) +
+              stat_bin(aes(y = stat(count / sum(count))), col="darkgreen", fill="darkgreen", binwidth = 0.5, center = 0.5) +
+              # annotate("rect", xmin=-0.5, xmax=input$inputthreshold, ymin=0, ymax=1, fill=rgb(1, 1, 1, 0.65), col=rgb(0, 0, 0, 0)) +
+              # geom_density(adjust=4) + #, trim = T) +  #create a kernel density curve
               ggtitle(main_label) +
-              # xlim(c(plot_xmin, plot_xmax)) +
+              scale_x_continuous(breaks=scales::pretty_breaks()) +
+              xlim(c(plot_xmin, plot_xmax)) +
               ylim(c(plot_ymin, plot_ymax)) +
-              xlab("Total collisions over months highlighted below") +
+              xlab("Total collisions per year over months highlighted below") +
+              ylab("Frequency") +
               annotate("text", x=x_ann, y=y_ann, label = fig_text) +
               geom_vline(xintercept = input$inputthreshold, color = "red", linetype = "dashed") +
-              annotate("text", x=input$inputthreshold, y=0.5, col="red", label = "Input threshold", angle=90, vjust=1.5) +
+              annotate("text", x=input$inputthreshold, y=plot_ymax*0.5, col="red", label = "Input threshold", angle=90, vjust=1.5) +
               theme_classic() + 
-              theme(axis.title.y = element_blank(),
-                    axis.ticks.y = element_blank(),
-                    axis.text.y = element_blank(),
-                    plot.caption = element_text(face = "italic")
+              theme(
+                # axis.title.y = element_blank(),
+                # axis.ticks.y = element_blank(),
+                # axis.text.y = element_blank(),
               )
             
             p2 <- cowplot::ggdraw(cowplot::add_sub(p1, label = month_lab, x=seq(0.1,0.9,0.8/11), color = month_col, size = 10, fontface = bold))
             # p3 <- cowplot::ggdraw(cowplot::add_sub(p2,label = str_wrap(fig.caption, width=120, exdent=6),  x=0.05, y=0.85, color = "black", size = 12, hjust = 0, vjust = 0.5))
-            
-          } else {
-            # main_label  <<-  "Option not run"
-            p2 <- ggplot() +
-              theme_void() +
-              geom_text(aes(0,0,label="This plot left intentionally blank.\nOption not run.")) +
-              xlab(NULL) #optional, but safer in case another theme is applied later
-          }
           # Add plot to list to render in each tab
           print(p2)
          })
@@ -604,17 +651,34 @@ server <- function(input, output, session) {
   # https://github.com/rstudio/shiny/issues/1591
   # Adding  tags$style(type="text/css", ".recalculating {opacity: 1.0;}" removes this feature
   output$plot_tabs = renderUI({
-    nTabs = length(isolate(results_plots()))
-    histTabs = lapply(1:nTabs, function(x) {
-      # plot_name <- names(results_plots()[[x]])[[1]]
-      tabPanel(paste('Run', x),
-               renderPlot(results_plots()[[x]]), height = 400, 
-               tags$style(type="text/css", ".recalculating {opacity: 1.0;}"))
-    })
-    do.call(tabsetPanel, histTabs)
+    # browser()
+    nTabs = length(results_plots())
+    if (nTabs>0){
+      histTabs = lapply(1:nTabs, function(x) {
+        # plot_name <- names(results_plots()[[x]])[[1]]
+        tabPanel(paste('Run', x),
+                 renderPlot(results_plots()[[x]]), height = 400, 
+                 tags$style(type="text/css", ".recalculating {opacity: 1.0;}"))
+      })
+      do.call(tabsetPanel, histTabs)
+    }
   })
   
-  # rendetext to report the probability of collisions exceeding a user-specified threshold
+  output$plot_results_caption <-
+    renderUI(p("Figure 1: A histogram of the frequency of the total number of collisions per year.
+                            The heights of the bars show the relative frequency of each value.
+                            Months for which movement data were provided or available are shown in bold;
+                            only bold months are shown in histogram of annual collisions.",
+                style = "margin-top: 10px; margin-left: 5px; margin-right: 10px; font-size: 12px; font-style: italic;"))
+  
+  #render caption when there are results plots
+  # "Figure 1: A histogram of the number of collisions per year for each iteration.
+  #                           The heights of the bars show the relative frequency of each value.
+  #                           The line shows the smoothed estimate of the shape of the histogram.
+  #                           Months for which movement data were provided or available are shown in bold;
+  #                           only bold months are shown in histogram of annual collisions."
+  
+  # rendertext to report the probability of collisions exceeding a user-specified threshold
   # Divide the total number of collision results exceeding the threshold, dividided by the total number of runs
   prob_exceed_threshold <- eventReactive(input$run, {
     num_species <- length(isolate(CRM_fun()[['CRSpecies']]))
@@ -641,11 +705,12 @@ server <- function(input, output, session) {
     }
     return(prob_threshold_list)
   })
-  output$prob <- renderUI({
+  output$prob_exceed_threshold_msg <- renderUI({
     #now render in correct format to output to Shiny with newlines as needed.
     HTML(paste(prob_exceed_threshold(), collapse = " <br> "))
     })
   
+  option_labels <- c("Option 1: faster approximation", NA,"Option 3: slower but more accurate assessment")
   
   # dialog box for sensitivity analyses
   observeEvent(input$runGSA, {
@@ -675,7 +740,6 @@ server <- function(input, output, session) {
 
   # approximate the run time for 1 species and 1 turbine; reactive with user input for number of iterations
   times <- c(0.1, 1.2, 0.8, 5.9, 1.9, 3.1)
-  option_labels <- c("Basic CRM", "NA", "CRM with full FHD")
 
   # load scripts for the main collision risk computation and the global sensitivity analyses
   source("BandModel_function_cf.R")
@@ -716,6 +780,25 @@ server <- function(input, output, session) {
         dplyr::select(-contains("Op"))
     wf_t <- as.data.frame(t(wf_t))
     colnames(wf_t) <- paste("Run", wf_t[1, ])
+    #add parameter defs
+    wf1_params_defs <- c("Parameter definitions",
+                         "The number of turbines in the wind farm array", 
+                         "Megawatt rating of turbine model",
+                         "Number of blades for the turbine model",
+                         "Rotor radius (hub to blade tip; m)",
+                         "Standard deviation of rotor radius",
+                         "Hub height (m)",
+                         "Standard deviation of hub height",
+                         "Chord width of blade (m)",
+                         "Standard deviation of blade width",
+                         "Wind speed rating of turbine model (m/s)",
+                         "Standard deviation of wind speed rating",
+                         "Pitch angle of blades (degrees relative to rotor plane)",
+                         "Standard deviation of pitch angle of blades",
+                         "Wind farm width (km)",
+                         "Latitude (decimal degrees)",
+                         "Longitude (decimal degrees)")
+    wf_t <- cbind("Parameter definitions"=wf1_params_defs, wf_t)
     return(wf_t[-1,, drop = FALSE])
     },
     options = list(
@@ -724,66 +807,8 @@ server <- function(input, output, session) {
       bSort=FALSE
     ))
   
-  
-  # #render the wind farm data to the tables on the wind farm data tab
-  # output$wind_farm_data1 <- DT::renderDataTable(
-  #   wind_farm_df() %>%
-  #     dplyr::select(Run, 2:6, -contains("Op")),
-  #   options = list(
-  #     dom = 't',
-  #     scrollX = TRUE
-  #   ))
-  # 
-  # output$wind_farm_data2 <- DT::renderDataTable(
-  #   wind_farm_df() %>%
-  #     dplyr::select(Run, 7:10, -contains("Op")),
-  #   options = list(
-  #     dom = 't',
-  #     scrollX = TRUE
-  #   ))
-  # 
-  # output$wind_farm_data3 <- DT::renderDataTable(
-  #   wind_farm_df() %>%
-  #     dplyr::select(Run, 11:17, -contains("Op")),
-  #   options = list(
-  #     dom = 't',
-  #     scrollX = TRUE
-  #   ))
-  
-  
-  
-  #show the Wind Farm operational data as as table for QA/QC
-  # output$ops_data <-
-  #   DT::renderDataTable(
-  #     DT::datatable({
-  #       ops_data_all <- data.frame()
-  #       for (i in 1:nrow(wind_farm_df())) {
-  #         # run <- row[["run"]]
-  #         row <- wind_farm_df()[i,]
-  #         ops_data <- row %>% 
-  #           dplyr::mutate(Var="MonthOp", Desc="Wind availability (maximum amount of time turbines can be operational/month)") %>% 
-  #           dplyr::select(Run, Var, Desc, matches("Op$")) %>% 
-  #           dplyr::rename_with(~ gsub("Op", "", .x)) #rename to month only  
-  #         
-  #         ops_mean_data <- row %>% 
-  #           dplyr::mutate(Var="MonthOpMean", Desc='Mean time that turbines will not be operational ("Down time").') %>% 
-  #           dplyr::select(Run, Var, Desc, matches("Mean$")) %>% 
-  #           dplyr::rename_with(~ gsub("OpMean", "", .x)) #rename to month only  
-  #         
-  #         ops_SD_data <- row %>% 
-  #           dplyr::mutate(Var="MonthOpSD", Desc="deviation of mean operational time") %>% 
-  #           dplyr::select(Run, Var, Desc, matches("OPSD$")) %>% 
-  #           dplyr::rename_with(~ gsub("OpSD", "", .x))
-  #         
-  #         # ops_data_run <- rbind(ops_data, ops_mean_data, ops_SD_data)
-  #         ops_data_all <- rbind(ops_data_all, ops_data, ops_mean_data, ops_SD_data)
-  #       }
-  #       return(ops_data_all)
-  #       },
-  #       options = list(rownames = FALSE, pagelength=20, dom = 't')
-  #       )
-  #     )
-  
+  # windfarm_loc <- observe(st_as_sf(wind_farm_df()[1,], coords=c("Latitude", "Longitude")))
+
   #show the Wind Farm operational data as as table for QA/QC
   output$ops_data <-
     DT::renderDataTable({
@@ -791,6 +816,11 @@ server <- function(input, output, session) {
         select(Run, matches("Op", ignore.case=F)) %>% 
         t()
       colnames(ops_data) <- paste("Run", ops_data[1, ])
+      #add parameter defs
+      op_defs <- rep(c("Wind availability (maximum amount of time turbines can be operational/month).",
+                   "Mean time that turbines will not be operational (“down time”)", 
+                   "Standard deviation of mean operational time"),12)
+      ops_data <- cbind("Parameter definitions"=op_defs, ops_data)
       return(ops_data[-1, , drop = FALSE])},
       options = list(dom = 't', 
                      paging = FALSE,
@@ -873,18 +903,20 @@ server <- function(input, output, session) {
       ) %>%
       addPolygons(data=spp_move_data(), weight = 1, opacity = 0.75,
                   color = ~meanpal()(mean),
-                  highlightOptions = highlightOptions(color = "white", weight = 2), group="Occur. prob.") %>%
-      addPolygons(data=spp_move_data(), weight = 1, opacity = 0.75,
-                  color = ~CIpal()(CI_range),
-                  highlightOptions = highlightOptions(color = "white", weight = 2), group="CI range") %>%
+                  highlightOptions = highlightOptions(color = "white", weight = 2), group="Occup. prob.") %>%
+      # addPolygons(data=spp_move_data(), weight = 1, opacity = 0.75,
+      #             color = ~CIpal()(CI_range),
+      #             highlightOptions = highlightOptions(color = "white", weight = 2), group="CI range") %>%
+      addLegend(data=spp_move_data(), pal = meanpal(), values = ~mean, title = "\u00B9Mean occup. prob.", position = "bottomright", group="Occup. prob.") %>% 
+      # addLegend(data=spp_move_data(), pal = CIpal(), values = ~CI_range, title = "\u00B2CI range occup. prob.",position = "bottomright", group="CI range") %>% 
       setView(lat = mean(wind_farm_df()$Latitude), lng = mean(wind_farm_df()$Longitude), zoom = 6) %>%
       #Layers control
       addLayersControl(
-        overlayGroups = c("Wind farm", "BOEM wind leases", "BOEM wind planning areas", "Occur. prob.", "CI range"),
+        overlayGroups = c("Wind farm", "BOEM wind leases", "BOEM wind planning areas", "Occup. prob."), #, "CI range"),
         position = "topright", #"topleft",
         options = layersControlOptions(collapsed = TRUE)
-      ) %>% 
-      hideGroup("CI range")
+      ) #%>% 
+      #hideGroup("CI range")
   })
 
   # data for species characteristics
@@ -924,7 +956,7 @@ server <- function(input, output, session) {
   # })
   # create reactive objects to be used in the main risk computation script, with the ability to update with user inputs
   # species input
-  speciesreact <- reactiveValues()
+  # speciesreact <- reactiveValues()
   speciesreact <- eventReactive(c(input$species_input,input$file_spp_param$datapath), {
     if(length(which(input$species_input=="Other"))==0){
       input$species_input
@@ -937,8 +969,6 @@ server <- function(input, output, session) {
     
   output$species_data <-
     DT::renderDataTable({
-      # browser()
-      
       if(!is.null(input$file_spp_param)){
         #load only first row of data
         bird_data <- read.csv(input$file_spp_param$datapath, header = T)[1,]
@@ -947,7 +977,17 @@ server <- function(input, output, session) {
       }else{
         bird_data <- read.csv("data/BirdData.csv", header = T)
         # species_data_row <- reshape2::melt(as.data.table(bird_data[which(bird_data$Species==input$species_input), ]), id.var=NULL)
-        species_data_row <- as.data.frame(t(bird_data[which(bird_data$Species==input$species_input), ]))
+        species_params_defs <- c("Parameter definitions",
+                                 "Mean Proportion of birds that avoid turbines", 
+                                 "Standard deviation of the avoidance rate",
+                                 "Mean body length of the target species (m)",
+                                 "Standard deviation of the species body length (m)",
+                                 "Mean species wingspan length (m)",
+                                 "Standard deviation of the species wingspan length (m)",
+                                 "Mean species flight speed (m/s)",
+                                 "Standard deviation of the species flight speed (m/s)",
+                                 "Flight type, either flapping or gliding")
+        species_data_row <- as.data.frame(cbind(species_params_defs ,t(bird_data[which(bird_data$Species==input$species_input), ])))
         colnames(species_data_row) <- sub("_", " ", species_data_row[1,])
       }
       return(species_data_row[-1, , drop = FALSE])
@@ -1007,7 +1047,8 @@ server <- function(input, output, session) {
   output$flt_ht_data <-
       DT::renderDataTable(
       datatable(
-        flt_ht_data_react(),
+        flt_ht_data_react() %>% 
+          filter(Height_m >= input$slider_flt_ht[1] & Height_m <= input$slider_flt_ht[2]),
         selection = list(mode = "single", selected = 1),
         options = list(
           paging = FALSE,
@@ -1016,12 +1057,13 @@ server <- function(input, output, session) {
         )
       )
     )
-
+  # observe(print(input$slider_flt_ht[1]))
   #flight height data plot
   output$flt_ht_plot <- renderPlot({
     ggplot(flt_ht_data_react()) +
       geom_pointrange(aes(x = Height_m, y = mean_prop, ymin = min_prop, ymax = max_prop)) +
       geom_point(aes(x = Height_m, y = mean_prop), col = "red") +
+      xlim(input$slider_flt_ht[1], input$slider_flt_ht[2]) +
       xlab("Flight height (m)") +
       ylab("Proportion") +
       coord_flip() +
@@ -1041,12 +1083,64 @@ server <- function(input, output, session) {
             sapply(1:length(input$file_spp_param$datapath), function(y) length(suppressWarnings(read.table(input$file_spp_param[[y,"datapath"]], header=TRUE, sep = ","))[1,]))
             ==25)[1],"datapath"]], header=TRUE, sep = ","))
       }else{
-        read.csv("data/CountData_motus.csv", header = T)
+        read.csv("data/CountData_USFWS_20220718.csv", header = T)
       }
     }else{
-      read.csv("data/CountData_motus.csv", header = T)
+      read.csv("data/CountData_USFWS_20220718.csv", header = T)
     }
   })
+  
+  #output of the population data for species baked into SCRAM
+  output$count_data <-
+    DT::renderDataTable({
+      count_tbl <- tablereact7()[which(tablereact7()$Species==isolate(input$species_input)), ] %>%
+        select(-Species)
+      return(count_tbl)},
+      options = list(dom = 't', 
+                     paging = FALSE,
+                     bSort=FALSE, 
+                     scrollX = TRUE
+                     ),
+      rownames= FALSE
+    )
+  
+  #Notes about assumptions and limitations for the three species for which population info is provided.
+  spp_count_notes <- reactive({
+    Species <- input$species_input
+    if (Species=="Piping_Plover"){
+      return(c("Entire Atlantic coast population could be present in area during months listed.",
+      "Occurrence through October to include birds stopping over in mid-Atlantic (e.g. North Carolina). Number of birds still present in Atlantic likely lower.",     
+      "Estimate of HY fledges, uses the 20-year (2002 - 2021) average productivity (unweighted)."))
+    }
+    else if (Species=="Red_Knot"){
+      return(c("All pass through in spring - #s consistent w/Lyons et al super-population estimate for 2020 in DE Bay: 40,444 (95 perc. credible interval: 33,627–49,966).",
+    "Winter population estimates represent the total # of adults and sub-adults (in general).",
+    "Southern and northern wintering birds could be present during July - Sept.",
+    "Only northern wintering birds could be present during Oct - Nov.",
+    "Only southeast US and Caribbean birds could be present during Dec.",
+    "Birds from western Gulf population are excluded from totals in Atlantic region due to lack of information on extent to which they use the Atlantic region.",
+    "Numbers do not include HY birds in fall.",
+    "Dec number coming from Lyons et al 2017. Just includes SE US Birds, not Caribbean.",
+    "Issues with double counting addressed because birds may be present in different areas of Atlantic region for weeks to months."))
+    }
+    else if (Species=="Roseate_Tern"){
+      return(c("Entire NW Atlantic pop could be present in area during months listed.",
+    "Average of most recent (2018 and 2019) productivity data from three largest colonies (representing >90 perc. of population) representative of entire population.",
+    "Fledging and post-breeding dispersal period occurs from July through Sept.",
+    "Numbers of non-breeding adults are not included.",
+    "Does not include non-breeding 1 and 2 year old birds that return but do not breed.",
+    "From Gochfeld and Burger (2020): Northeastern birds first arrive at Nantucket and Martha's Vineyard, MA, in large flocks, then disperse north as well as west. They arrive 26 Apr-20 May at Bird I., MA (Nisbet 1980, Nisbet 1981b, Nisbet 1989b), slightly later at Falkner I., CT, and Great Gull I., NY.",
+    "From Gochfeld and Burger (2020): Apparently all birds migrate directly from the staging area around Cape Cod across the w. North Atlantic to the West Indies (Nisbet 1984, C. Mostello). Very small numbers occur at sea off N. Carolina from late Aug to late Sep, with a peak in early Sep; the latest date was 28 Oct (D. Lee)."))
+    } else {return("")} 
+    
+  })
+  
+  #create count notes for rendering.
+  output$count_notes <- renderText(
+    c("<h5>Population data assumptions/limitations:</h5>",
+    paste0(1:length(spp_count_notes()),") ", spp_count_notes(), " <br>"))
+  )
+  
   # movement data
   # option for user-provided movement files disabled to simplify input
   tablereact9 <- reactiveValues()
@@ -1251,7 +1345,7 @@ server <- function(input, output, session) {
       return(NULL)
     running(TRUE)
     run_times$start <- Sys.time()
-    output$run_start_txt <- renderText(paste0("The model run was started at: ", strftime(run_times$start, "%Y-%m-%d %H:%M:%S %Z")))
+    output$run_start_txt <- renderText(paste0("The model run was started at: ", strftime(run_times$start, "%Y-%m-%d %H:%M:%S %Z", tz = "America/New_York")))
     movement_type2 <- movement_type()
     speciesreact2 <- speciesreact()
     radioreact2 <- radioreact()
@@ -1282,6 +1376,7 @@ server <- function(input, output, session) {
     #     survey_data = tablereact12,
     #     runlocal = FALSE
     #   )
+    
     # Must set seed=T for correct parallel application
     # https://www.r-bloggers.com/2020/09/future-1-19-1-making-sure-proper-random-numbers-are-produced-in-parallel-processing/
     CRM_fun(NULL)
@@ -1314,21 +1409,17 @@ server <- function(input, output, session) {
       progress$close()
       running(FALSE) # done with run
       run_times$end <- Sys.time()
-      output$run_end_txt <- renderText(paste0("The model run was completed at: ", strftime(run_times$end, "%Y-%m-%d %H:%M:%S %Z")))
+      output$run_end_txt <- renderText(paste0("The model run was completed at: ", strftime(run_times$end, "%Y-%m-%d %H:%M:%S %Z", tz = "America/New_York")))
       # run_elaps_time <- run_end_time - run_start_time
       # output$study_design_report_txt <- renderPrint(CRM_fun())
       updateTabItems(session, inputId = "tabsetpan", selected = "crm_results")
-      # if (!input$cancel){
-      #   autosave_results()
-      # }
     })
     NULL
   })
 
   # box appears if main function is canceled
   observeEvent(input$cancel,{
-    if(running())
-      interruptor$interrupt("Canceled")
+    if(running())interruptor$interrupt("Canceled")
   })
 
   # after main function is run, but before sensitivity analyses are, create a .csv that alerts the user (will be included in download package if user downloads raw results)
@@ -1341,7 +1432,6 @@ server <- function(input, output, session) {
   # create a reactive object for the sensitivity analyses
   GSA_fun <- eventReactive(
     input$runGSA, {
-      # browser()
       GSA_approx(CRM_fun(), input$optionradio)
     })
 
@@ -1356,7 +1446,7 @@ server <- function(input, output, session) {
 
   
   # update estimated run time when user chooses a new option
-  observeEvent(req(input$optionradio), {output$message <- renderText({
+  observeEvent(req(input$optionradio), {output$iter_message <- renderText({
     if((times*as.numeric(input$slider1))[as.numeric(input$optionradio)] > 90 & (times*as.numeric(input$slider1))[as.numeric(input$optionradio)] <= 3600){
       time_estimate <- round((times*as.numeric(input$slider1))[as.numeric(input$optionradio)]/60)
       unit_time <- "minutes"
@@ -1369,12 +1459,12 @@ server <- function(input, output, session) {
       time_estimate <- (times*as.numeric(input$slider1))[as.numeric(input$optionradio)]
       unit_time <- "seconds"
     }
-    paste("~", time_estimate, unit_time, "per species, per turbine model")
+    paste("~", time_estimate, unit_time, "per wind farm/turbine option")
   })
   })
 
   # print message alerting when main script is run successfully
-  observeEvent(input$run, {output$hack <- renderText({
+  observeEvent(input$run, {output$run_success_msg <- renderText({
     if(!is.null(CRM_fun()$monthCollsnReps_opt1)){
       isolate(paste(option_labels[as.numeric(input$optionradio)], " ran successfully.", sep=""))
     }
@@ -1481,39 +1571,6 @@ server <- function(input, output, session) {
     })
   })
   
-  # ATG - Below function only works only local file systems and doesn't translate to shinyapss.io well
-  # autosave_results <- function() {
-  #   #create function to autosave output to pre-selected drive folder on completion of run
-  #     filename = paste0('SCRAM_model_output_', strftime(isolate(run_times$end), "%Y%m%d_%H%M%S"),'.zip')
-  #     fname=file.path(isolate(parseDirPath(roots=dir_roots, input$folder)), filename)
-  #     print(fname)
-  #     tmpdir = tempdir()
-  #     fnames4zip1 <- list()
-  #     
-  #     for(e in 1:length(CRM_fun()[['CRSpecies']])){
-  #       for(w in 1:length(CRM_fun()[['Turbines']])){
-  #         sindex <- CRM_fun()[['CRSpecies']][e]
-  #         tindex <- paste0("turbModel", CRM_fun()[['Turbines']][w])
-  #         write.csv(CRM_fun()[[as.numeric(input$optionradio)]][[sindex]][[tindex]], file = paste0(tmpdir, "/", sindex, "_", tindex,".csv"), row.names = FALSE)
-  #         write.csv(cbind(CRM_fun()[["sampledParamsTurbine"]][[sindex]][[tindex]],
-  #                         CRM_fun()[["sampledParamsBird"]][[sindex]][[tindex]]), file = paste0(tmpdir, "/", sindex, "_", tindex,"_params.csv"), row.names = FALSE)
-  #         # write.csv("Sensitivity analyses not run", file = paste0(tmpdir, "/", CRM_fun()[['CRSpecies']][e], "_", paste0("turbModel", CRM_fun()[['Turbines']][w]),"_sensitivity.csv"), row.names = FALSE)
-  #         fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/", sindex, "_", tindex,".csv", sep=""))
-  #         fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/", sindex, "_", tindex,"_params.csv", sep=""))
-  #         fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/", CRM_fun()[['CRSpecies']][e], "_", paste0("turbModel", CRM_fun()[['Turbines']][w]),"_sensitivity.csv"))
-  #         
-  #       }}
-  #     write.csv(CRM_fun()[["resultsSummary"]], file = paste0(tmpdir, "/resultsSummary.csv"), row.names = FALSE)
-  #     fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/resultsSummary.csv"))
-  #     
-  #     params <- list(SCRAM_version = SCRAM_version, project = input$project_name, modeler = input$modeler, run_start_time = isolate(run_times$start),  run_end_time = isolate(run_times$end), 
-  #                    prob_exceed = isolate(prob_exceed_threshold()), iterations = input$slider1, model_output = CRM_fun(), threshold = input$inputthreshold, option = input$optionradio, species_labels = SpeciesLabels)
-  #     save(params, file = file.path(tmpdir, paste0('SCRAM_model_output_', strftime(isolate(run_times$end), "%Y%m%d_%H%M%S"),'.RData'))) 
-  #     fnames4zip1 <- c(fnames4zip1, file.path(tmpdir, paste0('SCRAM_model_output_', strftime(isolate(run_times$end), "%Y%m%d_%H%M%S"),'.RData')))
-  #     
-  #     utils::zip(zipfile=fname, files=unlist(fnames4zip1), flags = "-r9Xj")
-  # }
-  
   # download handler for report using R Markdown
   output$report <- downloadHandler(
     # for PDF output, change this to "report.pdf"
@@ -1541,20 +1598,12 @@ server <- function(input, output, session) {
       # set up parameters to pass to Rmd document
       params <- list(SCRAM_version = SCRAM_version, project = input$project_name, modeler = input$modeler, run_start_time = isolate(run_times$start), run_end_time = isolate(run_times$end), 
                      iterations = input$slider1, model_output = CRM_fun(), threshold = input$inputthreshold, prob_exceed = isolate(prob_exceed_threshold()), 
-                     option = input$optionradio, species_labels = SpeciesLabels)
+                     option = input$optionradio, species_labels = SpeciesLabels, 
+                     species_popn_data = tablereact7()[which(tablereact7()$Species==isolate(input$species_input)),], species_popn_assumptions = spp_count_notes())
       
-      # params <- list(iterations = input$slider1, model_output = CRM_fun(), threshold = input$inputthreshold, option = input$optionradio, species_labels = SpeciesLabels)
-      # Knit the document, passing in the `params` list, and eval it in a
-      # child of the global environment (this isolates the code in the document
-      # from the code in this app).
-      # Below works for HTML files, not pdf
-      # rmarkdown::render(tempReport, output_file = file,
-      #                   params = params,
-      #                   envir = new.env(parent = globalenv())
-      # )
       # can't render to PDF - error with latexpdf. Found this solution: 
       # https://stackoverflow.com/questions/66056764/knitr-cannot-find-pdflatex-when-creating-pdf-from-shiny-app
-      # "ou should NOT specify the output_file argument in render() Instead you need to rename the file AFTER rendering."
+      # "You should NOT specify the output_file argument in render() Instead you need to rename the file AFTER rendering."
       
       out <- rmarkdown::render(tempReport,
                         params = params,
@@ -1603,22 +1652,29 @@ server <- function(input, output, session) {
           for(w in 1:length(CRM_fun()[['Turbines']])){
             sindex <- CRM_fun()[['CRSpecies']][e]
             tindex <- paste0("turbModel", CRM_fun()[['Turbines']][w])
-            write.csv(CRM_fun()[[as.numeric(input$optionradio)]][[sindex]][[tindex]], file = paste0(tmpdir, "/SCRAM_", sindex, "_", tindex,".csv"), row.names = FALSE)
+            pred_monthly_coll <- CRM_fun()[[as.numeric(input$optionradio)]][[sindex]][[tindex]]
+            colnames(pred_monthly_coll) <- paste0("crm_pred_", month.abb)
+            pred_monthly_coll <- cbind(run=1:isolate(sliderreact()), pred_monthly_coll)
+            write.csv(pred_monthly_coll, file = paste0(tmpdir, "/SCRAM_crm_pred_monthly_", sindex, "_", tindex,".csv"), row.names = FALSE)
             write.csv(cbind(CRM_fun()[["sampledParamsTurbine"]][[sindex]][[tindex]],
                             CRM_fun()[["sampledParamsBird"]][[sindex]][[tindex]]), file = paste0(tmpdir, "/SCRAM_", sindex, "_", tindex,"_params.csv"), row.names = FALSE)
-            # write.csv("Sensitivity analyses not run", file = paste0(tmpdir, "/", CRM_fun()[['CRSpecies']][e], "_", paste0("turbModel", CRM_fun()[['Turbines']][w]),"_sensitivity.csv"), row.names = FALSE)
-            fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/SCRAM_", sindex, "_", tindex,".csv", sep=""))
-            fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/SCRAM_", sindex, "_", tindex,"_params.csv", sep=""))
-            fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/SCRAM_", CRM_fun()[['CRSpecies']][e], "_", paste0("turbModel", CRM_fun()[['Turbines']][w]),"_sensitivity.csv"))
-            
+            write.csv(tablereact7()[which(tablereact7()$Species==sindex),], file = paste0(tmpdir, "/SCRAM_", sindex, "_species_popn_data.csv"), row.names = FALSE)
+            params <- list(SCRAM_version = SCRAM_version, project = input$project_name, modeler = input$modeler, run_start_time = isolate(run_times$start),  run_end_time = isolate(run_times$end), 
+                           prob_exceed = isolate(prob_exceed_threshold()), iterations = input$slider1, model_output = CRM_fun(), threshold = input$inputthreshold, option = input$optionradio, 
+                           species_labels = SpeciesLabels, species_popn_data = tablereact7()[which(tablereact7()$Species==sindex),], 
+                           species_popn_assumptions = spp_count_notes())
+            save(params, file = file.path(tmpdir, paste0('SCRAM_model_output_', strftime(isolate(run_times$end), "%Y%m%d_%H%M%S"),'.RData'))) 
+            fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/SCRAM_crm_pred_monthly_", sindex, "_", tindex,".csv"))
+            fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/SCRAM_", sindex, "_species_popn_data.csv"))
+            fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/SCRAM_", sindex, "_", tindex,"_params.csv"))
+            fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/SCRAM_", sindex, "_", tindex,"_sensitivity.csv"))
+            fnames4zip1 <- c(fnames4zip1, paste0("data/SCRAM_", sindex, "_ht_dflt.csv"))
+            fnames4zip1 <- c(fnames4zip1, paste0("data/movements/",sindex, "_movements.zip"))
+            fnames4zip1 <- c(fnames4zip1, file.path(tmpdir, paste0('SCRAM_model_output_', strftime(isolate(run_times$end), "%Y%m%d_%H%M%S"),'.RData')))
+
           }}
         # write.csv(CRM_fun()[["resultsSummary"]], file = paste0(tmpdir, "/SCRAM_results_summary.csv"), row.names = FALSE)
         # fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/SCRAM_results_summary.csv"))
-        
-        params <- list(SCRAM_version = SCRAM_version, project = input$project_name, modeler = input$modeler, run_start_time = isolate(run_times$start),  run_end_time = isolate(run_times$end), 
-                       prob_exceed = isolate(prob_exceed_threshold()), iterations = input$slider1, model_output = CRM_fun(), threshold = input$inputthreshold, option = input$optionradio, species_labels = SpeciesLabels)
-        save(params, file = file.path(tmpdir, paste0('SCRAM_model_output_', strftime(isolate(run_times$end), "%Y%m%d_%H%M%S"),'.RData'))) 
-        fnames4zip1 <- c(fnames4zip1, file.path(tmpdir, paste0('SCRAM_model_output_', strftime(isolate(run_times$end), "%Y%m%d_%H%M%S"),'.RData')))
         
         utils::zip(zipfile=fname, files=unlist(c(fnames4zip1)), flags = "-r9Xj")
         #if(file.exists(paste0(fname, ".zip"))) {file.rename(paste0(fname, ".zip"), fname)}

@@ -82,7 +82,6 @@ Total_Up_Wind_P = 2 * (sum(CollisionRiskTab$radius[2:20] * CollisionRiskTab$Up_P
 
 Total_Down_Wind_P = 2 * (sum(CollisionRiskTab$radius[2:20] * CollisionRiskTab$Down_P[2:20]) + CollisionRiskTab$Down_P[21]/2) * 0.05
 
-
 P_Collision = (TurbineData$Prop_Upwind[t] * Total_Up_Wind_P) + ((1-TurbineData$Prop_Upwind[t]) * Total_Down_Wind_P)
 P_Collision = 100 * P_Collision
 

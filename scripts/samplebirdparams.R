@@ -80,7 +80,6 @@ sampledBirdParams$Avoidance[sampledBirdParams$Avoidance < 0] <- 0
 if(c_densOpt == "truncNorm"){
   
   for(currentMonth in monthLabels){
-      
       # separate out the current month mean and SD. species.count is already filtered for current species
       #workingMean <- species.count %>% select(contains(currentMonth)) %>% select(-contains('SD'))
       workingMean <-  species.count[ , paste(currentMonth)]
@@ -90,7 +89,8 @@ if(c_densOpt == "truncNorm"){
       
       if(survey_data==1){
         if(!is.na(workingSD)){
-          workingVect <- max(sampleCount_tnorm(iter, workingMean, workingSD), 0)   
+          workingVect <- max(sampleCount_tnorm(iter, workingMean, workingSD), 0)  
+          #create vector of sampled population counts based on the number of iteration requested
           sampledSpeciesCount[,grep(currentMonth, names(sampledSpeciesCount))] <- workingVect
           sampledSpeciesCount[sampledSpeciesCount < 0] <- 0
         }else{
@@ -102,6 +102,7 @@ if(c_densOpt == "truncNorm"){
       #if(!is.na(workingSD[1,1])){
       if(!is.na(workingSD)){
         workingVect <- sampleCount_tnorm(iter, workingMean, workingSD)
+        #Calculate the number of animals in a grid cell/sq km in a month
         #sampledSpeciesCount[,grep(currentMonth, names(sampledSpeciesCount))] <- workingVect
         sampledSpeciesCount[,grep(currentMonth, names(sampledSpeciesCount))] <- (workingVect*MovementSpec[movement.boot.sample, paste(currentMonth)])/movement_type[3]
         # will explicitly rep mean, although not needed as filling into the DF
@@ -112,6 +113,7 @@ if(c_densOpt == "truncNorm"){
       #sampledSpeciesCount[,grep(currentMonth, names(sampledSpeciesCount))]*MovementSpec[ , paste(currentMonth)]
       }
   }
+
 }
 
 

@@ -253,7 +253,6 @@ stochasticBand <- function(
     }else{
       FlightHeightSpec <- FlightData
     }
-    
     flight.boot <- 3:dim(FlightHeightSpec)[2] # skip second column since it contains heights, and first column because it has the species ID
     flight.boot.sample <- sample(flight.boot, iter, replace=T)
     
@@ -382,8 +381,11 @@ stochasticBand <- function(
           # BOEM requested that NTurbines be an input instead of total power
           # ATG - need to account for each run (differnt parameter runs)
           NTurbines = TurbineData$Num_Turbines[t]
-
+          
+          # ATG - CF changed to a linear function , number of turines * the rotor diameter - huh? Revert to rotor area
           TotalFrontalArea = NTurbines*sampledTurbine$RotorRadius_m[i]*2
+          # TotalFrontalArea = NTurbines * pi * sampledTurbine$RotorRadius[i] ^2
+          
           # cf added an option that changes the rotor area from circular to square to better model the FHD in individual-based options
           TotalFrontalAreaProb <- NTurbines*(sampledTurbine$RotorRadius_m[i]*2)^2
 

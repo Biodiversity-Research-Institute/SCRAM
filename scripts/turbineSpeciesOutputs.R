@@ -150,11 +150,11 @@ sampledBirdParamsIters[, 4] = sampledBirdParams$FlightSpeed
 
 
 # Turbine parameters ------------------------------------------------------
-sampledTurbineParamsSummary = data.frame(matrix(data = 0, ncol = 5, nrow = 22))
+sampledTurbineParamsSummary = data.frame(matrix(data = 0, ncol = 5, nrow = 23))
 names(sampledTurbineParamsSummary) = c("Parameter","Mean", "SD", "Median", "IQR")
 # pitch_rad is used instead of pitch for column label
 sampledTurbineParamsSummary[, 1] = c("RotorRadius_m", "HubHeight_m", "BladeWidth_m", "WindSpeed_mps", "RotorSpeed_rpm", "Pitch_rad", "WFWidth_km", 
-                                     "Latitude", "Prop_Upwind", "Num_Turbines", "JanOp", "FebOp", "MarOp", "AprOp", "MayOp", "JunOp", "JulOp", 
+                                     "Latitude", "Longitude", "Prop_Upwind", "Num_Turbines", "JanOp", "FebOp", "MarOp", "AprOp", "MayOp", "JunOp", "JulOp", 
                                      "AugOp", "SepOp", "OctOp", "NovOp", "DecOp")
 sampledTurbineParamsSummary[1, 2:5] = c(mean(sampledTurbine$RotorRadius_m), sd(sampledTurbine$RotorRadius_m), median(sampledTurbine$RotorRadius_m), IQR(sampledTurbine$RotorRadius_m))
 sampledTurbineParamsSummary[2, 2:5] = c(mean(sampledTurbine$HubHeight_m), sd(sampledTurbine$HubHeight_m), median(sampledTurbine$HubHeight_m), IQR(sampledTurbine$HubHeight_m))
@@ -164,29 +164,30 @@ sampledTurbineParamsSummary[5, 2:5] = c(mean(sampledTurbine$RotorSpeed_rpm), sd(
 sampledTurbineParamsSummary[6, 2:5] = c(mean(sampledTurbine$Pitch), sd(sampledTurbine$Pitch), median(sampledTurbine$Pitch), IQR(sampledTurbine$Pitch))
 sampledTurbineParamsSummary[7, 2:5] = c(mean(TurbineData$WFWidth_km), sd(TurbineData$WFWidth_km), median(TurbineData$WFWidth_km), IQR(TurbineData$WFWidth_km))
 sampledTurbineParamsSummary[8, 2:5] = c(mean(TurbineData$Latitude), sd(TurbineData$Latitude), median(TurbineData$Latitude), IQR(TurbineData$Latitude))
-sampledTurbineParamsSummary[9, 2:5] = c(mean(TurbineData$Prop_Upwind), sd(TurbineData$Prop_Upwind), median(TurbineData$Prop_Upwind), IQR(TurbineData$Prop_Upwind))
+sampledTurbineParamsSummary[9, 2:5] = c(mean(TurbineData$Longitude), sd(TurbineData$Longitude), median(TurbineData$Longitude), IQR(TurbineData$Longitude))
+sampledTurbineParamsSummary[10, 2:5] = c(mean(TurbineData$Prop_Upwind), sd(TurbineData$Prop_Upwind), median(TurbineData$Prop_Upwind), IQR(TurbineData$Prop_Upwind))
 # sampledTurbineParamsSummary[10, 2:5] = c(mean(TurbineData$TPower), sd(TurbineData$TPower), median(TurbineData$TPower), IQR(TurbineData$TPower))  #removed and switched to Numn_turbines
-sampledTurbineParamsSummary[10, 2:5] = c(mean(TurbineData$Num_Turbines), sd(TurbineData$Num_Turbines), median(TurbineData$Num_Turbines), IQR(TurbineData$Num_Turbines))
-sampledTurbineParamsSummary[11, 2:5] = c(mean(sampledTurbine$JanOp), sd(sampledTurbine$JanOp), median(sampledTurbine$JanOp), IQR(sampledTurbine$JanOp))
-sampledTurbineParamsSummary[12, 2:5] = c(mean(sampledTurbine$FebOp), sd(sampledTurbine$FebOp), median(sampledTurbine$FebOp), IQR(sampledTurbine$FebOp))
-sampledTurbineParamsSummary[13, 2:5] = c(mean(sampledTurbine$MarOp), sd(sampledTurbine$MarOp), median(sampledTurbine$MarOp), IQR(sampledTurbine$MarOp))
-sampledTurbineParamsSummary[14, 2:5] = c(mean(sampledTurbine$AprOp), sd(sampledTurbine$AprOp), median(sampledTurbine$AprOp), IQR(sampledTurbine$AprOp))
-sampledTurbineParamsSummary[15, 2:5] = c(mean(sampledTurbine$MayOp), sd(sampledTurbine$MayOp), median(sampledTurbine$MayOp), IQR(sampledTurbine$MayOp))
-sampledTurbineParamsSummary[16, 2:5] = c(mean(sampledTurbine$JunOp), sd(sampledTurbine$JunOp), median(sampledTurbine$JunOp), IQR(sampledTurbine$JunOp))
-sampledTurbineParamsSummary[17, 2:5] = c(mean(sampledTurbine$JulOp), sd(sampledTurbine$JulOp), median(sampledTurbine$JulOp), IQR(sampledTurbine$JulOp))
-sampledTurbineParamsSummary[18, 2:5] = c(mean(sampledTurbine$AugOp), sd(sampledTurbine$AugOp), median(sampledTurbine$AugOp), IQR(sampledTurbine$AugOp))
-sampledTurbineParamsSummary[19, 2:5] = c(mean(sampledTurbine$SepOp), sd(sampledTurbine$SepOp), median(sampledTurbine$SepOp), IQR(sampledTurbine$SepOp))
-sampledTurbineParamsSummary[20, 2:5] = c(mean(sampledTurbine$OctOp), sd(sampledTurbine$OctOp), median(sampledTurbine$OctOp), IQR(sampledTurbine$OctOp))
-sampledTurbineParamsSummary[21, 2:5] = c(mean(sampledTurbine$NovOp), sd(sampledTurbine$NovOp), median(sampledTurbine$NovOp), IQR(sampledTurbine$NovOp))
-sampledTurbineParamsSummary[22, 2:5] = c(mean(sampledTurbine$DecOp), sd(sampledTurbine$DecOp), median(sampledTurbine$DecOp), IQR(sampledTurbine$DecOp))
+sampledTurbineParamsSummary[11, 2:5] = c(mean(TurbineData$Num_Turbines), sd(TurbineData$Num_Turbines), median(TurbineData$Num_Turbines), IQR(TurbineData$Num_Turbines))
+sampledTurbineParamsSummary[12, 2:5] = c(mean(sampledTurbine$JanOp), sd(sampledTurbine$JanOp), median(sampledTurbine$JanOp), IQR(sampledTurbine$JanOp))
+sampledTurbineParamsSummary[13, 2:5] = c(mean(sampledTurbine$FebOp), sd(sampledTurbine$FebOp), median(sampledTurbine$FebOp), IQR(sampledTurbine$FebOp))
+sampledTurbineParamsSummary[14, 2:5] = c(mean(sampledTurbine$MarOp), sd(sampledTurbine$MarOp), median(sampledTurbine$MarOp), IQR(sampledTurbine$MarOp))
+sampledTurbineParamsSummary[15, 2:5] = c(mean(sampledTurbine$AprOp), sd(sampledTurbine$AprOp), median(sampledTurbine$AprOp), IQR(sampledTurbine$AprOp))
+sampledTurbineParamsSummary[16, 2:5] = c(mean(sampledTurbine$MayOp), sd(sampledTurbine$MayOp), median(sampledTurbine$MayOp), IQR(sampledTurbine$MayOp))
+sampledTurbineParamsSummary[17, 2:5] = c(mean(sampledTurbine$JunOp), sd(sampledTurbine$JunOp), median(sampledTurbine$JunOp), IQR(sampledTurbine$JunOp))
+sampledTurbineParamsSummary[18, 2:5] = c(mean(sampledTurbine$JulOp), sd(sampledTurbine$JulOp), median(sampledTurbine$JulOp), IQR(sampledTurbine$JulOp))
+sampledTurbineParamsSummary[19, 2:5] = c(mean(sampledTurbine$AugOp), sd(sampledTurbine$AugOp), median(sampledTurbine$AugOp), IQR(sampledTurbine$AugOp))
+sampledTurbineParamsSummary[20, 2:5] = c(mean(sampledTurbine$SepOp), sd(sampledTurbine$SepOp), median(sampledTurbine$SepOp), IQR(sampledTurbine$SepOp))
+sampledTurbineParamsSummary[21, 2:5] = c(mean(sampledTurbine$OctOp), sd(sampledTurbine$OctOp), median(sampledTurbine$OctOp), IQR(sampledTurbine$OctOp))
+sampledTurbineParamsSummary[22, 2:5] = c(mean(sampledTurbine$NovOp), sd(sampledTurbine$NovOp), median(sampledTurbine$NovOp), IQR(sampledTurbine$NovOp))
+sampledTurbineParamsSummary[23, 2:5] = c(mean(sampledTurbine$DecOp), sd(sampledTurbine$DecOp), median(sampledTurbine$DecOp), IQR(sampledTurbine$DecOp))
 
 #== write out turbine parameter tables
 # fileName<-paste(TurbineData$TurbineModel_MW[t],CRSpecies[s],"sampledTurbineParameters.csv", sep="_")
 # write.csv (sampledTurbineParamsSummary, paste(results_folder, "tables", fileName, sep="/"))
 
-sampledTurbineParamsIters = data.frame(matrix(data = 0, ncol = 22, nrow = iter))
+sampledTurbineParamsIters = data.frame(matrix(data = 0, ncol = 23, nrow = iter))
 names(sampledTurbineParamsIters) = c("RotorRadius_m", "HubHeight_m", "BladeWidth_m", "WindSpeed_mps", "RotorSpeed_rpm", "Pitch_rad", "WFWidth_km", 
-                                     "Latitude", "Prop_Upwind", "Num_Turbines", "JanOp", "FebOp", "MarOp", "AprOp", "MayOp", "JunOp", "JulOp", 
+                                     "Latitude", "Longitude", "Prop_Upwind", "Num_Turbines", "JanOp", "FebOp", "MarOp", "AprOp", "MayOp", "JunOp", "JulOp", 
                                      "AugOp", "SepOp", "OctOp", "NovOp", "DecOp")
 sampledTurbineParamsIters[, 1] = sampledTurbine$RotorRadius_m
 sampledTurbineParamsIters[, 2] = sampledTurbine$HubHeight_m
@@ -196,21 +197,22 @@ sampledTurbineParamsIters[, 5] = sampledTurbine$RotorSpeed_rpm
 sampledTurbineParamsIters[, 6] = sampledTurbine$Pitch
 sampledTurbineParamsIters[, 7] = TurbineData$WFWidth_km
 sampledTurbineParamsIters[, 8] = TurbineData$Latitude
-sampledTurbineParamsIters[, 9] = TurbineData$Prop_Upwind
+sampledTurbineParamsIters[, 9] = TurbineData$Longitude
+sampledTurbineParamsIters[, 10] = TurbineData$Prop_Upwind
 # sampledTurbineParamsIters[, 10] = TurbineData$TPower
-sampledTurbineParamsIters[, 10] = TurbineData$Num_Turbines
-sampledTurbineParamsIters[, 11] = sampledTurbine$JanOp
-sampledTurbineParamsIters[, 12] = sampledTurbine$FebOp
-sampledTurbineParamsIters[, 13] = sampledTurbine$MarOp
-sampledTurbineParamsIters[, 14] = sampledTurbine$AprOp
-sampledTurbineParamsIters[, 15] = sampledTurbine$MayOp
-sampledTurbineParamsIters[, 16] = sampledTurbine$JunOp
-sampledTurbineParamsIters[, 17] = sampledTurbine$JulOp
-sampledTurbineParamsIters[, 18] = sampledTurbine$AugOp
-sampledTurbineParamsIters[, 19] = sampledTurbine$SepOp
-sampledTurbineParamsIters[, 20] = sampledTurbine$OctOp
-sampledTurbineParamsIters[, 21] = sampledTurbine$NovOp
-sampledTurbineParamsIters[, 22] = sampledTurbine$DecOp
+sampledTurbineParamsIters[, 11] = TurbineData$Num_Turbines
+sampledTurbineParamsIters[, 12] = sampledTurbine$JanOp
+sampledTurbineParamsIters[, 13] = sampledTurbine$FebOp
+sampledTurbineParamsIters[, 14] = sampledTurbine$MarOp
+sampledTurbineParamsIters[, 15] = sampledTurbine$AprOp
+sampledTurbineParamsIters[, 16] = sampledTurbine$MayOp
+sampledTurbineParamsIters[, 17] = sampledTurbine$JunOp
+sampledTurbineParamsIters[, 18] = sampledTurbine$JulOp
+sampledTurbineParamsIters[, 19] = sampledTurbine$AugOp
+sampledTurbineParamsIters[, 20] = sampledTurbine$SepOp
+sampledTurbineParamsIters[, 21] = sampledTurbine$OctOp
+sampledTurbineParamsIters[, 22] = sampledTurbine$NovOp
+sampledTurbineParamsIters[, 23] = sampledTurbine$DecOp
 
 #== write out turbine parameter tables
 # fileName<-paste(TurbineData$TurbineModel_MW[t],CRSpecies[s],"sampledTurbineParametersIters.csv", sep="_")
