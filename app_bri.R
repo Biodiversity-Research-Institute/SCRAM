@@ -26,9 +26,11 @@
 # 13 Jun 22 - fully update movement models
 # 15 Jun 22 - remove other species input for later release
 # 21 Jul 22 - 0.80 - Upate movement and flight height models, bug fixes and improvements based on reviews
+# 20 Sep 22	- 0.81 - update species data 
+# 21 Sep 22 also change to report total monthly collision and the prediction interval for that estimate.
 
 source("helpers.R")
-SCRAM_version = "0.80 - Liatris"
+SCRAM_version = "0.81.1 - Myrica"
 # run_start_time = NA
 # run_end_time = NA
 options(shiny.trace = F)
@@ -54,7 +56,7 @@ ui <- dashboardPage(
         icon('fa-solid fa-book', "fa-2x"),
         style = "padding-top: 10px; padding-bottom: 10px",
         target = '_blank',
-        href = "SCRAM_manual_072222.pdf"),
+        href = "SCRAM_manual_v0811_092122.pdf"),
       style = "float: left"
     ),
     tags$li(
@@ -196,7 +198,7 @@ ui <- dashboardPage(
         condition = "output.fileUploaded",
         h4("4) Select CRM parameter options:", style = "padding-left: 10px; margin-bottom: 0px"),
         radioButtons("optionradio", "Band (2012) equivalent CRM options:",
-                     c("Option 1: faster approximation" = "1", "Option 3: slower but more accurate assessment" = "3")),
+                     c("Option 1: faster approximation" = "1", "Option 3: slower but more precise" = "3")),
         div(style = "margin-top: -20px;"),  #reduce space between elements
         sliderInput("slider1", label = "Model iterations (rec. min. 1,000)", min = 100, 
                     max = 10000, value = 100, step=100, width = '95%'), 
@@ -710,7 +712,7 @@ server <- function(input, output, session) {
     HTML(paste(prob_exceed_threshold(), collapse = " <br> "))
     })
   
-  option_labels <- c("Option 1: faster approximation", NA,"Option 3: slower but more accurate assessment")
+  option_labels <- c("Option 1: faster approximation", NA,"Option 3: slower but more precise")
   
   # dialog box for sensitivity analyses
   observeEvent(input$runGSA, {
@@ -817,9 +819,9 @@ server <- function(input, output, session) {
         t()
       colnames(ops_data) <- paste("Run", ops_data[1, ])
       #add parameter defs
-      op_defs <- rep(c("Wind availability (maximum amount of time turbines can be operational/month).",
+      op_defs <- c("defs", (rep(c("Wind availability (maximum amount of time turbines can be operational/month).",
                    "Mean time that turbines will not be operational (“down time”)", 
-                   "Standard deviation of mean operational time"),12)
+                   "Standard deviation of mean operational time"),12)))
       ops_data <- cbind("Parameter definitions"=op_defs, ops_data)
       return(ops_data[-1, , drop = FALSE])},
       options = list(dom = 't', 
@@ -931,10 +933,10 @@ server <- function(input, output, session) {
             length(suppressWarnings(read.table(input$file_spp_param[[y,"datapath"]], header=TRUE, sep = ","))[1,]))
             ==10)[1],"datapath"]], header=TRUE, sep = ","))
       }else{
-        read.csv("data/BirdData.csv", header = T)
+        read.csv("data/BirdData_092022.csv", header = T)
       }
     }else{
-      read.csv("data/BirdData.csv", header = T)
+      read.csv("data/BirdData_092022.csv", header = T)
     }
   })
   
@@ -946,7 +948,7 @@ server <- function(input, output, session) {
   # species_data_react <- eventReactive(c(input$file_spp_param, input$species_input), {
   #   if(!is.null(input$file_spp_param)){
   #   }else{
-  #     bird_data <- read.csv("data/BirdData.csv", header = T)
+  #     bird_data <- read.csv("data/BirdData_092022.csv", header = T)
   #     # species_data_row <- reshape2::melt(as.data.table(bird_data[which(bird_data$Species==input$species_input), ]), id.var=NULL)
   #     species_data_row <- as.data.frame(t(bird_data[which(bird_data$Species==input$species_input), ]))
   #     
@@ -975,7 +977,7 @@ server <- function(input, output, session) {
         species_data_row <- as.data.frame(t(bird_data[which(bird_data$Species==input$species_input), ]))
         colnames(species_data_row) <- sub("_", " ", species_data_row[1,])
       }else{
-        bird_data <- read.csv("data/BirdData.csv", header = T)
+        bird_data <- read.csv("data/BirdData_092022.csv", header = T)
         # species_data_row <- reshape2::melt(as.data.table(bird_data[which(bird_data$Species==input$species_input), ]), id.var=NULL)
         species_params_defs <- c("Parameter definitions",
                                  "Mean Proportion of birds that avoid turbines", 
@@ -1083,10 +1085,10 @@ server <- function(input, output, session) {
             sapply(1:length(input$file_spp_param$datapath), function(y) length(suppressWarnings(read.table(input$file_spp_param[[y,"datapath"]], header=TRUE, sep = ","))[1,]))
             ==25)[1],"datapath"]], header=TRUE, sep = ","))
       }else{
-        read.csv("data/CountData_USFWS_20220718.csv", header = T)
+        read.csv("data/CountData_USFWS_20220919.csv", header = T)
       }
     }else{
-      read.csv("data/CountData_USFWS_20220718.csv", header = T)
+      read.csv("data/CountData_USFWS_20220919.csv", header = T)
     }
   })
   

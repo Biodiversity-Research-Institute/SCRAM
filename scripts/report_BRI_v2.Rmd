@@ -433,7 +433,7 @@ for(q in 1:num_species){
     turb <- params$model_output[['Turbines']][i]
     
     model_out <- params$model_output[[as.numeric(params$option)]][[params$model_output[['CRSpecies']][q]]][[i]]
-
+    
     model_out_melt <- reshape2::melt(model_out, value.name = "coll_rate")
     model_out_melt <- model_out_melt %>% 
       dplyr::rename("month"="variable")
@@ -447,23 +447,34 @@ for(q in 1:num_species){
                        `Upper pred. interval` = as.character(round(quantile(coll_rate, c(0.975), na.rm=TRUE), 3))) %>% 
       replace_na(list(`Mean number of collisions`="", `Lower pred. interval`="", `Upper pred. interval`="")) %>% 
       mutate_if(is.character,
-                str_replace_all, pattern = "NaN", replacement = "")
-    model_summary$month <- as.character(model_summary$month)
-    annual_collision_rate_melt <- reshape2::melt(model_out, value.name = "coll_rate") %>% 
-      dplyr::rename("Time period"="variable")
+                str_replace_all, pattern = "NaN", replacement = "") %>% 
+      mutate(month = as.character(month))
     
-    annual_collision_rate <- mean(annual_collision_rate_melt$coll_rate, na.rm=T)
-    annual_lower_coll_rate <- quantile(annual_collision_rate_melt$coll_rate, c(0.025), na.rm=TRUE)
-    annual_upper_coll_rate <- quantile(annual_collision_rate_melt$coll_rate, c(0.975), na.rm=TRUE)
-    annual_rate <-c("Annual",round(annual_collision_rate, 3), round(annual_lower_coll_rate, 3), round(annual_upper_coll_rate, 3))
+    #calculate annual summary of model runs, mean of sum of posteriors and then quantiles of these sums for predict interval
+    annual_summary <- model_out_melt %>% 
+      dplyr::group_by(iter) %>% 
+      dplyr::summarise(sum_monthly = sum(coll_rate, na.rm = T))
+    
+    annual_rate <- c("annual", round(mean(annual_summary$sum_monthly, na.rm=TRUE), 3),
+                     round(quantile(annual_summary$sum_monthly, c(0.025), na.rm=TRUE), 3),
+                     round(quantile(annual_summary$sum_monthly, c(0.975), na.rm=TRUE), 3))
+    
+    # model_summary$month <- as.character(model_summary$month)
+    # annual_collision_rate_melt <- reshape2::melt(model_out, value.name = "coll_rate") %>% 
+    #   dplyr::rename("Time period"="variable")
+    # 
+    # annual_collision_rate <- sum(annual_collision_rate_melt$coll_rate, na.rm=T)
+    # annual_lower_coll_rate <- quantile(annual_collision_rate_melt$coll_rate, c(0.025), na.rm=TRUE)
+    # annual_upper_coll_rate <- quantile(annual_collision_rate_melt$coll_rate, c(0.975), na.rm=TRUE)
+    # annual_rate <-c("Annual",round(annual_collision_rate, 3), round(annual_lower_coll_rate, 3), round(annual_upper_coll_rate, 3))
     model_summary <- rbind(model_summary, annual_rate)    
     model_summary <- cbind(Species = spp, `Turbine Power (MW)` = turb, model_summary)
     all_models_summary <- rbind(all_models_summary, model_summary)
-
+    
   }
 }
 
-kbl(all_models_summary, booktabs=T, caption = "The predicted mean and 95 perc. prediction intervals of the number of collisions per month. Results are not shown for months that do not have movement data.") %>%
+kbl(all_models_summary, booktabs=T, caption = "The predicted mean and 95 perc. prediction intervals of the number of collisions per month and the total summed monthly number of collisions and 95% prediction interval. Results are not shown for months that do not have movement data.") %>%
   kable_styling(position="left", full_width=F, latex_options = c("HOLD_position", "striped")) %>% 
   row_spec(0,bold=T, extra_css = "vertical-align:text-bottom	;") %>% 
   column_spec(1,bold=T,color="red", width = "1.25in") %>% 
