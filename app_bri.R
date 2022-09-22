@@ -28,9 +28,10 @@
 # 21 Jul 22 - 0.80 - Upate movement and flight height models, bug fixes and improvements based on reviews
 # 20 Sep 22	- 0.81 - update species data 
 # 21 Sep 22 also change to report total monthly collision and the prediction interval for that estimate.
+# 22 Sep 22 - change def of hub height add to correct to air gap
 
 source("helpers.R")
-SCRAM_version = "0.81.1 - Myrica"
+SCRAM_version = "0.81.2 - Myrica gale"
 # run_start_time = NA
 # run_end_time = NA
 options(shiny.trace = F)
@@ -56,7 +57,7 @@ ui <- dashboardPage(
         icon('fa-solid fa-book', "fa-2x"),
         style = "padding-top: 10px; padding-bottom: 10px",
         target = '_blank',
-        href = "SCRAM_manual_v0811_092122.pdf"),
+        href = "SCRAM_manual_v0812_092222.pdf"),
       style = "float: left"
     ),
     tags$li(
@@ -788,13 +789,13 @@ server <- function(input, output, session) {
                          "Megawatt rating of turbine model",
                          "Number of blades for the turbine model",
                          "Rotor radius (hub to blade tip; m)",
-                         "Standard deviation of rotor radius",
-                         "Hub height (m)",
-                         "Standard deviation of hub height",
+                         "Standard deviation of rotor radius (m)",
+                         "Air gap (m)",
+                         "Standard deviation of air gap (m)",
                          "Chord width of blade (m)",
-                         "Standard deviation of blade width",
+                         "Standard deviation of blade width (m)",
                          "Wind speed rating of turbine model (m/s)",
-                         "Standard deviation of wind speed rating",
+                         "Standard deviation of wind speed rating (m/s)",
                          "Pitch angle of blades (degrees relative to rotor plane)",
                          "Standard deviation of pitch angle of blades",
                          "Wind farm width (km)",
@@ -892,7 +893,7 @@ server <- function(input, output, session) {
             wind_farm_df()$TurbineModel_MW,
             "<br/>Rotor radius (m): ",
             wind_farm_df()$RotorRadius_m,
-            "<br/>Hub Height (m): ",
+            "<br/>Air gap (m): ",
             wind_farm_df()$HubHeightAdd_m,
             "<br/>BladeWidth (m): ",
             wind_farm_df()$BladeWidth_m,
