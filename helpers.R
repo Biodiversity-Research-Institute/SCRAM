@@ -75,5 +75,5 @@ shut_up = function(expr) {
   #get rid of file
   close(f)
   
-  y
+  # y
 }

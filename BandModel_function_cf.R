@@ -88,7 +88,7 @@ stochasticBand <- function(
   #source("scripts/datachecksMovement.R", local=T)
   # run checks on input data files; if there are any failures, run this loop for an error message
   if(length(which(check < length(TurbineData[,1])))>0|length(which(checkBirdData < length(BirdData[,1])))>0|sum(checkFHD) != (2*length(FlightData))|sum(checkCounts) != 2){
-    TurbineError <- c("Num_Turbines","TurbineModel_MW", "Num_Blades", "RotorRadius_m", "RotorRadiusSD_m", "HubHeightAdd_m", "HubHeightAddSD_m", "BladeWidth_m", "BladeWidthSD_m", "WindSpeed_mps", "WindSpeedSD_mps", 
+    TurbineError <- c("Num_Turbines","TurbineModel", "Num_Blades", "RotorRadius_m", "RotorRadiusSD_m", "HubHeightAdd_m", "HubHeightAddSD_m", "BladeWidth_m", "BladeWidthSD_m", "WindSpeed_mps", "WindSpeedSD_mps", 
                       "Pitch", "PitchSD", "WFWidth_km", "Latitude", "Longitude", "Prop_Upwind")[which(check < length(TurbineData[,1]))]
     BirdDataError <- c("Species", "Avoidance", "AvoidanceSD", "Body_Length", "Body_LengthSD", "Wingspan", "WingspanSD", "Flight_Speed", "Flight_SpeedSD", 
                        "Flight")[which(checkBirdData < length(BirdData[,1]))]
@@ -128,10 +128,7 @@ stochasticBand <- function(
   
   sampledParamsBird <- list()
   sampledParamsTurbine <- list()
-  
-  # create month labels (used in Options when estimating no. of collisions)
-  monthLabels <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul",  "Aug", "Sep", "Oct", "Nov", "Dec")
-  
+
   # unmute the following 5 lines to set up results folder locally for saving results and run metadata
   # create folders and paths ------------------------------------------------
   # create results folder
@@ -161,7 +158,7 @@ stochasticBand <- function(
   # day length calculations not needed with motus implementation
   #source("scripts/DayLength.R", local=T) 
   # when DayLength.R is muted, create the data frame for storing monthly abundance (or "flux") information
-  hours = data.frame(c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))
+  hours = data.frame(month.abb)
   names(hours) = c("Month")
   
   # load sampling functions for stochastic bits -----------------------------
@@ -269,7 +266,7 @@ stochasticBand <- function(
     # sampledSpeciesCount = data.frame(matrix(data = 0, ncol = 12, nrow = iter))
     sampledSpeciesCount = data.frame(matrix(data = NA, ncol = 12, nrow = iter))
     # ATG - change 0's no NAs
-    names(sampledSpeciesCount) = monthLabels
+    names(sampledSpeciesCount) = month.abb
     
     # create data frame for density data
     # densitySummary=data.frame(matrix(data = 0, ncol = nrow(TurbineData)*3, nrow = iter))
@@ -300,7 +297,7 @@ stochasticBand <- function(
       # tab1 <- data.frame(matrix(data = 0, ncol = 12, nrow = iter))
       tab1 <- data.frame(matrix(data = NA, ncol = 12, nrow = iter))
       # ATG - change 0's to NA
-      names(tab1) <- monthLabels
+      names(tab1) <- month.abb
       tab2 <- tab3 <- tab4 <- tab5 <- tab6 <- tab1
       
       # create objects to store PColl and CollInt 
@@ -493,7 +490,7 @@ stochasticBand <- function(
       
       # store simulation replicates under each option, for current species and turbine  ===========
       cSpec <- CRSpecies[s]
-      cTurbModel <- paste0("turbModel", TurbineData$TurbineModel_MW[t])
+      cTurbModel <- paste0("turbModel", TurbineData$TurbineModel[t])
       
       monthCollsnReps_opt1[[cSpec]][[cTurbModel]] <- tab1
       monthCollsnReps_opt2[[cSpec]][[cTurbModel]] <- tab2
@@ -541,7 +538,7 @@ stochasticBand <- function(
     # print("The following species were modelled:")
     # print(CRSpecies)
     # print("The following turbine models were modelled:")
-    # print(TurbineData$TurbineModel_MW)
+    # print(TurbineData$TurbineModel)
     # sink()
     
     # return collision replicates as output  ===========
@@ -550,7 +547,7 @@ stochasticBand <- function(
                 monthCollsnReps_opt3 = monthCollsnReps_opt3, monthCollsnReps_opt4 = monthCollsnReps_opt4, 
                 monthCollsnReps_opt5 = monthCollsnReps_opt5, monthCollsnReps_opt6 = monthCollsnReps_opt6,
                 sampledParamsBird = sampledParamsBird, sampledParamsTurbine = sampledParamsTurbine,
-                resultsSummary = resultsSummary, Turbines = TurbineData$TurbineModel_MW, CRSpecies = CRSpecies))
+                resultsSummary = resultsSummary, Turbines = TurbineData$TurbineModel, CRSpecies = CRSpecies))
     }
   }
 }

@@ -52,7 +52,7 @@ Option3_collisions_No_Avoid <- hours$Flux*CollInt*Operational
 # ATG - change 0's no NAs
 Option3_CollisionRate <- data.frame(matrix(data = NA, nrow = 12, ncol = 2))
 names(Option3_CollisionRate) <- c("Month", "Collisions")
-Option3_CollisionRate$Month <- monthLabels
+Option3_CollisionRate$Month <- month.abb
 
 if(LargeArrayCorrection == "yes"){
   Option3_CollisionRate[, 2] <- as.numeric(Option3_collisions_No_Avoid*(1-sampledBirdParams$Avoidance[i])*L_ArrayCF)

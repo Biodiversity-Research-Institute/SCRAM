@@ -61,11 +61,11 @@ monthlySummaryOpt3[11,2:6] = c(mean(tab3$Nov, na.rm=TRUE), sd(tab3$Nov, na.rm=TR
 monthlySummaryOpt3[12,2:6] = c(mean(tab3$Dec, na.rm=TRUE), sd(tab3$Dec, na.rm=TRUE), CV(mean(tab3$Dec, na.rm=TRUE),sd(tab3$Dec, na.rm=TRUE)), median(tab3$Dec, na.rm=TRUE), IQR(tab3$Dec, na.rm=TRUE))
 
 # save tables  -----------------------------------------------------------
-# fileName<-paste(TurbineData$TurbineModel_MW[t],CRSpecies[s],"monthlySummaryOpt1.csv", sep="_")
+# fileName<-paste(TurbineData$TurbineModel[t],CRSpecies[s],"monthlySummaryOpt1.csv", sep="_")
 # write.csv (monthlySummaryOpt1, paste(results_folder,"tables",  fileName, sep="/"))
-# fileName<-paste(TurbineData$TurbineModel_MW[t],CRSpecies[s],"monthlySummaryOpt2.csv", sep="_")
+# fileName<-paste(TurbineData$TurbineModel[t],CRSpecies[s],"monthlySummaryOpt2.csv", sep="_")
 # write.csv (monthlySummaryOpt2, paste(results_folder,"tables",  fileName, sep="/"))
-# fileName<-paste(TurbineData$TurbineModel_MW[t],CRSpecies[s],"monthlySummaryOpt3.csv", sep="_")
+# fileName<-paste(TurbineData$TurbineModel[t],CRSpecies[s],"monthlySummaryOpt3.csv", sep="_")
 # write.csv (monthlySummaryOpt3, paste(results_folder,"tables",  fileName, sep="/"))
 
 
@@ -109,15 +109,15 @@ densitySummary[,(t-1)*3+6]=rowSums(tab6)
 
 
 # Results summary table ---------------------------------------------------
-resultsSummary[(s*nrow(TurbineData)-(nrow(TurbineData)-t))*3-2,] <- c(CRSpecies[s], TurbineData$TurbineModel_MW[t], 1, 
+resultsSummary[(s*nrow(TurbineData)-(nrow(TurbineData)-t))*3-2,] <- c(CRSpecies[s], TurbineData$TurbineModel[t], 1, 
                                                                       mean(rowSums(tab1, na.rm=TRUE), na.rm=TRUE), sd(rowSums(tab1, na.rm=TRUE), na.rm=TRUE), 
                                                                       CV(mean(rowSums(tab1, na.rm=TRUE), na.rm=TRUE), sd(rowSums(tab1, na.rm=TRUE), na.rm=TRUE)), 
                                                                       median(rowSums(tab1, na.rm=TRUE), na.rm=TRUE), IQR(rowSums(tab1, na.rm=TRUE), na.rm=TRUE)) #option 1
-resultsSummary[(s*nrow(TurbineData)-(nrow(TurbineData)-t))*3-1,] <- c(CRSpecies[s], TurbineData$TurbineModel_MW[t], 2, 
+resultsSummary[(s*nrow(TurbineData)-(nrow(TurbineData)-t))*3-1,] <- c(CRSpecies[s], TurbineData$TurbineModel[t], 2, 
                                                                       mean(rowSums(tab2, na.rm=TRUE), na.rm=TRUE), sd(rowSums(tab2, na.rm=TRUE), na.rm=TRUE), 
                                                                       CV(mean(rowSums(tab2, na.rm=TRUE), na.rm=TRUE), sd(rowSums(tab2, na.rm=TRUE), na.rm=TRUE)), 
                                                                       median(rowSums(tab2, na.rm=TRUE), na.rm=TRUE), IQR(rowSums(tab2, na.rm=TRUE), na.rm=TRUE)) #option 2
-resultsSummary[(s*nrow(TurbineData)-(nrow(TurbineData)-t))*3-0,] <- c(CRSpecies[s], TurbineData$TurbineModel_MW[t], 3, 
+resultsSummary[(s*nrow(TurbineData)-(nrow(TurbineData)-t))*3-0,] <- c(CRSpecies[s], TurbineData$TurbineModel[t], 3, 
                                                                       mean(rowSums(tab3, na.rm=TRUE), na.rm=TRUE), sd(rowSums(tab3, na.rm=TRUE), na.rm=TRUE), 
                                                                       CV(mean(rowSums(tab3, na.rm=TRUE), na.rm=TRUE), sd(rowSums(tab3, na.rm=TRUE), na.rm=TRUE)), 
                                                                       median(rowSums(tab3, na.rm=TRUE), na.rm=TRUE), IQR(rowSums(tab3, na.rm=TRUE), na.rm=TRUE)) #option 3
@@ -135,7 +135,7 @@ sampledBirdParamsSummary[4, 2:5] = c(mean(sampledBirdParams$FlightSpeed), sd(sam
 
 
 #== write out bird parameter tables
-# fileName<-paste(TurbineData$TurbineModel_MW[t],CRSpecies[s],"sampledBirdParameters.csv", sep="_")
+# fileName<-paste(TurbineData$TurbineModel[t],CRSpecies[s],"sampledBirdParameters.csv", sep="_")
 # write.csv (sampledBirdParamsSummary, paste(results_folder,"tables", fileName, sep="/"))
 
 sampledBirdParamsIters = data.frame(matrix(data = 0, ncol = 4, nrow = iter))
@@ -145,7 +145,7 @@ sampledBirdParamsIters[, 2] = sampledBirdParams$WingSpan
 sampledBirdParamsIters[, 3] = sampledBirdParams$BodyLength
 sampledBirdParamsIters[, 4] = sampledBirdParams$FlightSpeed
 
-# fileName<-paste(TurbineData$TurbineModel_MW[t],CRSpecies[s],"sampledBirdParametersIters.csv", sep="_")
+# fileName<-paste(TurbineData$TurbineModel[t],CRSpecies[s],"sampledBirdParametersIters.csv", sep="_")
 # write.csv (sampledBirdParamsIters, paste(results_folder,"tables", fileName, sep="/"), row.names=FALSE)
 
 
@@ -182,7 +182,7 @@ sampledTurbineParamsSummary[22, 2:5] = c(mean(sampledTurbine$NovOp), sd(sampledT
 sampledTurbineParamsSummary[23, 2:5] = c(mean(sampledTurbine$DecOp), sd(sampledTurbine$DecOp), median(sampledTurbine$DecOp), IQR(sampledTurbine$DecOp))
 
 #== write out turbine parameter tables
-# fileName<-paste(TurbineData$TurbineModel_MW[t],CRSpecies[s],"sampledTurbineParameters.csv", sep="_")
+# fileName<-paste(TurbineData$TurbineModel[t],CRSpecies[s],"sampledTurbineParameters.csv", sep="_")
 # write.csv (sampledTurbineParamsSummary, paste(results_folder, "tables", fileName, sep="/"))
 
 sampledTurbineParamsIters = data.frame(matrix(data = 0, ncol = 23, nrow = iter))
@@ -215,7 +215,7 @@ sampledTurbineParamsIters[, 22] = sampledTurbine$NovOp
 sampledTurbineParamsIters[, 23] = sampledTurbine$DecOp
 
 #== write out turbine parameter tables
-# fileName<-paste(TurbineData$TurbineModel_MW[t],CRSpecies[s],"sampledTurbineParametersIters.csv", sep="_")
+# fileName<-paste(TurbineData$TurbineModel[t],CRSpecies[s],"sampledTurbineParametersIters.csv", sep="_")
 # write.csv (sampledTurbineParamsIters, paste(results_folder, "tables", fileName, sep="/"), row.names=FALSE)
 
 

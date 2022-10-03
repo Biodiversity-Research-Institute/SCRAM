@@ -62,7 +62,7 @@ if(!is.na(TurbineData$BladeWidthSD_m[t])){
   
 # Monthly estimates below here --------------------------------------------
   
-for(currentMonth in monthLabels){
+for(currentMonth in month.abb){
   
   # separate out the current month mean and SD. Species.count is already filtered for current species
   #workingMean <- TurbineData %>% select(contains(currentMonth)) %>% select(contains('Mean'))

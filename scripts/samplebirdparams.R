@@ -79,7 +79,7 @@ sampledBirdParams$Avoidance[sampledBirdParams$Avoidance < 0] <- 0
 
 if(c_densOpt == "truncNorm"){
   
-  for(currentMonth in monthLabels){
+  for(currentMonth in month.abb){
       # separate out the current month mean and SD. species.count is already filtered for current species
       #workingMean <- species.count %>% select(contains(currentMonth)) %>% select(-contains('SD'))
       workingMean <-  species.count[ , paste(currentMonth)]
@@ -119,7 +119,7 @@ if(c_densOpt == "truncNorm"){
 
 
 if(c_densOpt == "reSamp"){
-  for(currentMonth in monthLabels){
+  for(currentMonth in month.abb){
     
     #browser()
     
@@ -134,7 +134,7 @@ if(c_densOpt == "reSamp"){
 
 
 if(c_densOpt == "pcntiles"){
-  for(currentMonth in monthLabels){
+  for(currentMonth in month.abb){
     
     #cPcntls <- species.count %>% select(referenceProbs, contains(currentMonth))
     #cPcntls <- species.count[, c(referenceProbs, paste(currentMonth), paste(currentMonth, "SD", sep=""))]

@@ -29,9 +29,11 @@
 # 20 Sep 22	- 0.81 - update species data 
 # 21 Sep 22 also change to report total monthly collision and the prediction interval for that estimate.
 # 22 Sep 22 - change def of hub height add to correct to air gap
+# 03 Oct 22 - 0.90 - fix movement model - some errors fixed by EMA, slight changes to report and manual. 
 
 source("helpers.R")
-SCRAM_version = "0.81.2 - Myrica gale"
+# SCRAM_version = "0.81.2 - Myrica gale"
+SCRAM_version = "0.90 - Acetes"   #https://en.wikipedia.org/wiki/List_of_Atlantic_decapod_species
 # run_start_time = NA
 # run_end_time = NA
 options(shiny.trace = F)
@@ -57,7 +59,7 @@ ui <- dashboardPage(
         icon('fa-solid fa-book', "fa-2x"),
         style = "padding-top: 10px; padding-bottom: 10px",
         target = '_blank',
-        href = "SCRAM_manual_v0812_092222.pdf"),
+        href = "SCRAM_manual_v090_100322.pdf"),
       style = "float: left"
     ),
     tags$li(
@@ -572,8 +574,6 @@ server <- function(input, output, session) {
             n = n
             NA_index <- which(is.na(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][q]]][[i]][1,]))
             outvector <- round(rowSums(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][q]]][[i]], na.rm = TRUE))
-            month_lab <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-            
             xmin <- round(min(outvector, na.rm=TRUE))
             xmax <- round(max(outvector, na.rm=TRUE))
             freq_outvector <- table(outvector)
@@ -604,9 +604,9 @@ server <- function(input, output, session) {
             
             #main plot title
             if(length(which(SpeciesLabels[,q] == CRM_fun()[['CRSpecies']][q]))>0){
-              main_label <- paste(SpeciesLabels[SpeciesLabels[,1] == CRM_fun()[['CRSpecies']][q], 2], " (turbine model ", CRM_fun()[['Turbines']][i], " MW)", sep="")
+              main_label <- paste(SpeciesLabels[SpeciesLabels[,1] == CRM_fun()[['CRSpecies']][q], 2], " (turbine model ", CRM_fun()[['Turbines']][i], ")", sep="")
             }else{
-              main_label <- paste(CRM_fun()[['CRSpecies']][q],  " (turbine model ", CRM_fun()[['Turbines']][i], " MW)", sep="")
+              main_label <- paste(CRM_fun()[['CRSpecies']][q],  " (turbine model ", CRM_fun()[['Turbines']][i], ")", sep="")
             }
 
             bold <- rep(2, 12)
@@ -635,7 +635,7 @@ server <- function(input, output, session) {
                 # axis.text.y = element_blank(),
               )
             
-            p2 <- cowplot::ggdraw(cowplot::add_sub(p1, label = month_lab, x=seq(0.1,0.9,0.8/11), color = month_col, size = 10, fontface = bold))
+            p2 <- cowplot::ggdraw(cowplot::add_sub(p1, label = month.abb, x=seq(0.1,0.9,0.8/11), color = month_col, size = 10, fontface = bold))
             # p3 <- cowplot::ggdraw(cowplot::add_sub(p2,label = str_wrap(fig.caption, width=120, exdent=6),  x=0.05, y=0.85, color = "black", size = 12, hjust = 0, vjust = 0.5))
           # Add plot to list to render in each tab
           print(p2)
@@ -786,7 +786,7 @@ server <- function(input, output, session) {
     #add parameter defs
     wf1_params_defs <- c("Parameter definitions",
                          "The number of turbines in the wind farm array", 
-                         "Megawatt rating of turbine model",
+                         "The turbine model used in the analysis",
                          "Number of blades for the turbine model",
                          "Rotor radius (hub to blade tip; m)",
                          "Standard deviation of rotor radius (m)",
@@ -889,8 +889,8 @@ server <- function(input, output, session) {
             wind_farm_df()$Run,
             "<br/>Number of turbines: ",
             wind_farm_df()$Num_Turbines,
-            "<br/>Turbine Model (MW): ",
-            wind_farm_df()$TurbineModel_MW,
+            "<br/>Turbine model: ",
+            wind_farm_df()$TurbineModel,
             "<br/>Rotor radius (m): ",
             wind_farm_df()$RotorRadius_m,
             "<br/>Air gap (m): ",
@@ -904,7 +904,7 @@ server <- function(input, output, session) {
           ),
         group = "Wind farm"
       ) %>%
-      addPolygons(data=spp_move_data(), weight = 1, opacity = 0.75,
+      addPolygons(data=spp_move_data(), weight = 1, fillOpacity = 0.5, opacity = 1,
                   color = ~meanpal()(mean),
                   highlightOptions = highlightOptions(color = "white", weight = 2), group="Occup. prob.") %>%
       # addPolygons(data=spp_move_data(), weight = 1, opacity = 0.75,
@@ -1097,7 +1097,7 @@ server <- function(input, output, session) {
   output$count_data <-
     DT::renderDataTable({
       count_tbl <- tablereact7()[which(tablereact7()$Species==isolate(input$species_input)), ] %>%
-        select(-Species)
+        dplyr::select(-Species)
       return(count_tbl)},
       options = list(dom = 't', 
                      paging = FALSE,

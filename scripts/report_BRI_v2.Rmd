@@ -28,6 +28,12 @@ header-includes:
   - \usepackage{tabu}
   - \usepackage{threeparttable}
   - \usepackage[normalem]{ulem}
+  - \usepackage{fancyhdr}
+  - \pagestyle{fancy}
+  - \fancyfoot[LO,LE]{`r params$project`, `r params$modeler`}
+  - \fancyhead[RO,RE]{SCRAM v. `r params$SCRAM_version`}
+  - \fancyfoot[CO,CE]{`r params$run_end_time`}
+  - \fancyfoot[LE,RO]{\thepage}
 ---
 <!-- header-includes required because won't re-run after first report download -->
 <!-- Fix: https://stackoverflow.com/questions/46080853/why-does-rendering-a-pdf-from-rmarkdown-require-closing-rstudio-between-renders/46083308#46083308 -->
@@ -38,7 +44,6 @@ library(kableExtra)
 library(dplyr)
 library(ggplot2)
 options(tinytex.verbose = TRUE)
-# load(file = "C:/Users/andrew.gilbert/Downloads/SCRAM_model_output_20220429_154239/SCRAM_model_output_20220429_154239.RData")
 
 ```
 
@@ -129,12 +134,15 @@ for(e in 1:num_species){
     }
   }
 }
-colnames(bird_params_table) <- c("Species", "Turbine Power (MW)", "Avoidance", "Wing span", "Body length", "Speed")
+colnames(bird_params_table) <- c("Species", "Turbine model", "Avoidance", "Wing span", "Body length", "Speed")
+bird_params_table <- as.data.frame(bird_params_table)
+bird_params_table <- bird_params_table[order(bird_params_table$Species, bird_params_table$`Turbine model`),]
+
 #https://stackoverflow.com/questions/53153537/rmarkdown-setting-the-position-of-kable
 #if you find HOLD_position is not powerful enough to literally PIN your table in the exact position, you may want to 
 # use HOLD_position, which is a more powerful version of this feature
 # percent symbol causing issues in caption
-kbl(bird_params_table, booktabs=T, caption = "Species input parameters (mean and 95 perc. range).") %>%
+kbl(bird_params_table, booktabs=T, caption = "Species input parameters (mean and 95 perc. range).", row.names = F) %>%
   kable_styling(position="left", full_width=F, latex_options = c("HOLD_position", "striped")) %>% 
   row_spec(0,bold=T) %>% 
   column_spec(1,bold=T,color="red") %>% 
@@ -151,7 +159,8 @@ for (month in month.abb){
   popn_tbl_compact[[month]] = paste(popn_tbl_compact[[month]], "\u00B1" ,popn_tbl_compact[[paste0(month, "SD")]])
 }
 popn_tbl_compact$Species <- gsub("_", " ",popn_tbl_compact$Species)
-popn_tbl_compact <- popn_tbl_compact %>% select(c("Species", month.abb))
+popn_tbl_compact <- popn_tbl_compact %>% 
+  dplyr::select(c("Species", month.abb))
 
 
 kbl(popn_tbl_compact[,c(1:7)], booktabs=T, caption = "Species monthly (Jan-Jun) population estimates \u00B1 SD and assumptions/limitations as specified by the USFWS using the most recent data.", row.names = F) %>%
@@ -211,8 +220,11 @@ for(e in 1:num_species){
     }
   }
 }
-colnames(turb_params_table) <- c("Species", "Turbine Power (MW)", "Num. turbines", "Rotor radius", "Hub height (m)", "Blade width (m)", "Wind speed (mps)")
-kbl(turb_params_table, booktabs=T, caption = "Wind farm input parameters (mean and 95 perc. range).") %>%
+colnames(turb_params_table) <- c("Species", "Turbine model", "Num. turbines", "Rotor radius", "Hub height (m)", "Blade width (m)", "Wind speed (mps)")
+turb_params_table <- as.data.frame(turb_params_table)
+turb_params_table <- turb_params_table[order(turb_params_table$Species, turb_params_table$`Turbine model`),]
+
+kbl(turb_params_table, booktabs=T, caption = "Wind farm input parameters (mean and 95 perc. range).", row.names = F) %>%
   kable_styling(position="left", full_width=F, latex_options = c("HOLD_position", "striped")) %>% 
   row_spec(0,bold=T) %>% 
   column_spec(1,bold=T,color="red") %>% 
@@ -257,8 +269,11 @@ for(e in 1:num_species){
     }
   }
 }
-colnames(turb_params_table2) <- c("Species", "Turbine Power (MW)","Prop. upwind", "Rotor speed (rpm)", "Pitch (radians)", "Farm width (km)", "Lat.", "Long.")
-kbl(turb_params_table2, booktabs=T, caption = "Wind farm input parameters (mean and 95 perc. range).") %>%
+colnames(turb_params_table2) <- c("Species", "Turbine model","Prop. upwind", "Rotor speed (rpm)", "Pitch (radians)", "Farm width (km)", "Lat.", "Long.")
+turb_params_table2 <- as.data.frame(turb_params_table2)
+turb_params_table2 <- turb_params_table2[order(turb_params_table2$Species, turb_params_table2$`Turbine model`),]
+
+kbl(turb_params_table2, booktabs=T, caption = "Wind farm input parameters (mean and 95 perc. range).", row.names = F) %>%
   kable_styling(position="left", full_width=F, latex_options = c("HOLD_position", "striped")) %>% 
   row_spec(0,bold=T) %>% 
   column_spec(1,bold=T,color="red") %>% 
@@ -298,8 +313,11 @@ for(e in 1:num_species){
     }
   }
 }
-colnames(turb_params_table_pt1) <- c("Species", "Turbine Power (MW)", "Jan Op.", "Feb Op.", "Mar Op.", "Apr Op.", "May Op.", "Jun Op.")
-kbl(turb_params_table_pt1,booktabs=T, caption = "Monthly wind farm operational data (mean and 95 perc. range) is given for each wind farm specification.") %>%
+colnames(turb_params_table_pt1) <- c("Species", "Turbine model", "Jan Op.", "Feb Op.", "Mar Op.", "Apr Op.", "May Op.", "Jun Op.")
+turb_params_table_pt1 <- as.data.frame(turb_params_table_pt1)
+turb_params_table_pt1 <- turb_params_table_pt1[order(turb_params_table_pt1$Species, turb_params_table_pt1$`Turbine model`),]
+
+kbl(turb_params_table_pt1,booktabs=T, caption = "Monthly wind farm operational data (mean and 95 perc. range) is given for each wind farm specification.", row.names = F) %>%
   kable_styling(position="left", full_width=F, latex_options = c("HOLD_position", "striped")) %>% 
   row_spec(0,bold=T) %>% 
   column_spec(1,bold=T,color="red") %>% 
@@ -339,8 +357,11 @@ for(e in 1:num_species){
   }
 }
 
-colnames(turb_params_table_pt2) <- c("Species", "Turbine Power (MW)", "Jul Op.", "Aug Op.", "Sep Op.", "Oct Op.", "Nov Op.", "Dec Op.")
-kbl(turb_params_table_pt2, booktabs=T, caption = "Monthly wind farm operational data (mean and 95 perc. range) is given for each wind farm specification.") %>%
+colnames(turb_params_table_pt2) <- c("Species", "Turbine model", "Jul Op.", "Aug Op.", "Sep Op.", "Oct Op.", "Nov Op.", "Dec Op.")
+turb_params_table_pt2 <- as.data.frame(turb_params_table_pt2)
+turb_params_table_pt2 <- turb_params_table_pt2[order(turb_params_table_pt2$Species, turb_params_table_pt2$`Turbine model`),]
+
+kbl(turb_params_table_pt2, booktabs=T, caption = "Monthly wind farm operational data (mean and 95 perc. range) is given for each wind farm specification.", row.names = F) %>%
   kable_styling(position="left", full_width=F, latex_options = c("HOLD_position", "striped")) %>% 
   row_spec(0,bold=T) %>% 
   column_spec(1,bold=T,color="red") %>% 
@@ -384,32 +405,33 @@ spp_move_occur$quant_labels <- quants_labels(spp_move_occur$mean)
 
 fill_labels <- as.vector(levels(spp_move_occur$quant_labels))
 
-shut_up(print(basemaps::basemap_ggplot(ext = map_extent, map_service = "esri", map_type = "world_ocean_base") +
-  ggnewscale::new_scale("fill") +
-  geom_sf(data = spp_move_occur, aes(fill=quant), alpha = 0.5) +
-  # RColorBrewer::brewer.pal(9, name = "YlOrRd")
-     # "#FFFFCC" "#FFEDA0" "#FED976" "#FEB24C" "#FD8D3C" "#FC4E2A" "#E31A1C" "#B10026"
-  # "#FFFFCC" "#FFEDA0" "#FED976" "#FEB24C" "#FD8D3C" "#FC4E2A" "#E31A1C" "#BD0026" "#800026"
-  # scale_fill_manual(values =fill_labels_colors) +
-  scale_fill_manual(values =c("1" ="#FFFFCC", "2"="#FFEDA0", "3"="#FED976", "4"="#FEB24C", "5"="#FD8D3C",
-                              "6"="#FC4E2A", "7"="#E31A1C", "8"="#B10026"), labels=fill_labels) +
-  ggnewscale::new_scale("color") +
-  geom_sf(data = states_sf, aes(col="black"), fill=NA, show.legend = F) +
-  geom_sf(data = BOEM_lease_outlines, aes(col="gray40"), fill=NA) +
-  geom_sf(data = BOEM_planning_area_outlines, aes(col="gray80"), fill=NA) +
-  geom_sf(data=windfarm_loc, aes(col="red"), fill=NA, size = 5, shape = 8) +
-  scale_color_identity(labels = c(black = "State boundaries", gray40 = "BOEM wind leases", gray80="BOEM planning areas",
-                                  red = "Wind farm location"), guide = "legend", ) +
-  coord_sf(xlim = c(map_extent_sm[1],map_extent_sm[3]), ylim=c(map_extent_sm[2],map_extent_sm[4])) +
-  ggtitle(paste(sub("_", " ", paste0(params$model_output[['CRSpecies']][1])), "annual occurrence probability\n  and wind farm location.")) +
-  theme_bw() +
-  guides(color = guide_legend(nrow = 4), 
-         fill = guide_legend(nrow = 4)) +
-  theme(axis.title = element_blank(), 
-        legend.title = element_blank(),
-        legend.position="bottom"))
+shut_up(
+  print(basemaps::basemap_ggplot(ext = map_extent, map_service = "esri", map_type = "world_ocean_base") +
+          ggnewscale::new_scale("fill") +
+          geom_sf(data = spp_move_occur, aes(fill=quant), alpha = 0.5) +
+          # RColorBrewer::brewer.pal(9, name = "YlOrRd")
+          # "#FFFFCC" "#FFEDA0" "#FED976" "#FEB24C" "#FD8D3C" "#FC4E2A" "#E31A1C" "#B10026"
+          # "#FFFFCC" "#FFEDA0" "#FED976" "#FEB24C" "#FD8D3C" "#FC4E2A" "#E31A1C" "#BD0026" "#800026"
+          # scale_fill_manual(values =fill_labels_colors) +
+          scale_fill_manual(values =c("1" ="#FFFFCC", "2"="#FFEDA0", "3"="#FED976", "4"="#FEB24C", "5"="#FD8D3C",
+                                      "6"="#FC4E2A", "7"="#E31A1C", "8"="#B10026"), labels=fill_labels) +
+          ggnewscale::new_scale("color") +
+          geom_sf(data = states_sf, aes(col="black"), fill=NA, show.legend = F) +
+          geom_sf(data = BOEM_lease_outlines, aes(col="gray40"), fill=NA) +
+          geom_sf(data = BOEM_planning_area_outlines, aes(col="gray80"), fill=NA) +
+          geom_sf(data=windfarm_loc, aes(col="red"), fill=NA, size = 5, shape = 8) +
+          scale_color_identity(labels = c(black = "State boundaries", gray40 = "BOEM wind leases", gray80="BOEM planning areas",
+                                          red = "Wind farm location"), guide = "legend", ) +
+          coord_sf(xlim = c(map_extent_sm[1],map_extent_sm[3]), ylim=c(map_extent_sm[2],map_extent_sm[4])) +
+          ggtitle(paste(sub("_", " ", paste0(params$model_output[['CRSpecies']][1])), "mean summed monthly occurrence probability\n  and wind farm location.")) +
+          theme_bw() +
+          guides(color = guide_legend(nrow = 4), 
+                 fill = guide_legend(nrow = 4)) +
+          theme(axis.title = element_blank(), 
+                legend.title = element_blank(),
+                legend.position="bottom"))
   
-  )
+)
 
   #There needs to be spaces between plots in R Markdown if they are to be given their own caption
   #https://stackoverflow.com/questions/52788015/looping-through-a-list-of-ggplots-and-giving-each-a-figure-caption-using-knitr
@@ -417,6 +439,7 @@ shut_up(print(basemaps::basemap_ggplot(ext = map_extent, map_service = "esri", m
 
 ```
 
+<br>
 \newpage
 
 ## Results for the SCRAM simulation
@@ -468,13 +491,13 @@ for(q in 1:num_species){
     # annual_upper_coll_rate <- quantile(annual_collision_rate_melt$coll_rate, c(0.975), na.rm=TRUE)
     # annual_rate <-c("Annual",round(annual_collision_rate, 3), round(annual_lower_coll_rate, 3), round(annual_upper_coll_rate, 3))
     model_summary <- rbind(model_summary, annual_rate)    
-    model_summary <- cbind(Species = spp, `Turbine Power (MW)` = turb, model_summary)
+    model_summary <- cbind(Species = spp, `Turbine model` = turb, model_summary)
     all_models_summary <- rbind(all_models_summary, model_summary)
     
   }
 }
 
-kbl(all_models_summary, booktabs=T, caption = "The predicted mean and 95 perc. prediction intervals of the number of collisions per month and the total summed monthly number of collisions and 95% prediction interval. Results are not shown for months that do not have movement data.") %>%
+kbl(all_models_summary, booktabs=T, caption = "The predicted mean and 95 perc. prediction intervals of the number of collisions per month and the total summed monthly number of collisions and 95 perc. prediction interval. Results are not shown for months that do not have movement data.") %>%
   kable_styling(position="left", full_width=F, latex_options = c("HOLD_position", "striped")) %>% 
   row_spec(0,bold=T, extra_css = "vertical-align:text-bottom	;") %>% 
   column_spec(1,bold=T,color="red", width = "1.25in") %>% 
@@ -495,8 +518,6 @@ for(q in 1:num_species){
       # if(sum(params$model_output[[as.numeric(params$option)]][[params$model_output[['CRSpecies']][q]]][[i]], na.rm=TRUE)>0){
         NA_index <- which(is.na(params$model_output[[as.numeric(params$option)]][[params$model_output[['CRSpecies']][q]]][[i]][1,]))
         outvector <- round(rowSums(params$model_output[[as.numeric(params$option)]][[params$model_output[['CRSpecies']][q]]][[i]], na.rm = TRUE))
-        month_lab <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-        
         xmin <- round(min(outvector, na.rm=TRUE))
         xmax <- round(max(outvector, na.rm=TRUE))
         freq_outvector <- table(outvector)
@@ -526,9 +547,9 @@ for(q in 1:num_species){
         
         #main plot title
         if(length(which(params$species_labels[,q] == params$model_output[['CRSpecies']][q]))>0){
-          main_label <- paste(params$species_labels[params$species_labels[,1] == params$model_output[['CRSpecies']][q], 2], " (turbine model ", params$model_output[['Turbines']][i], " MW)", sep="")
+          main_label <- paste(params$species_labels[params$species_labels[,1] == params$model_output[['CRSpecies']][q], 2], " (turbine model ", params$model_output[['Turbines']][i], ")", sep="")
         }else{
-          main_label <- paste(params$model_output[['CRSpecies']][q],  " (turbine model ", params$model_output[['Turbines']][i], " MW)", sep="")
+          main_label <- paste(params$model_output[['CRSpecies']][q],  " (turbine model ", params$model_output[['Turbines']][i], ")", sep="")
         }
         
         bold <- rep(2, 12)
@@ -551,7 +572,7 @@ for(q in 1:num_species){
           annotate("text", x=params$threshold, y=plot_ymax*0.5, col="red", label = "Input threshold", angle=90, vjust=1.5) +
           theme_classic()
         
-        print(cowplot::ggdraw(cowplot::add_sub(p1, label = month_lab, x=seq(0.1,0.9,0.8/11), color = month_col, size = 10, fontface = bold)))
+        print(cowplot::ggdraw(cowplot::add_sub(p1, label = month.abb, x=seq(0.1,0.9,0.8/11), color = month_col, size = 10, fontface = bold)))
       # }else{
       #   ggplot() +
       #     theme_void() +
@@ -586,11 +607,11 @@ for(q in 1:num_species){
   if(length(which(params$species_labels[,1] == params$model_output[['CRSpecies']][q]))>0){
     main_label <- paste(
       params$species_labels[params$species_labels[,1] == params$model_output[['CRSpecies']][q], 2], 
-      " (turbine model ", params$model_output[['Turbines']][i], " MW)", sep=""
+      " (turbine model ", params$model_output[['Turbines']][i], ")", sep=""
     )
   }else{
     main_label <- paste(params$model_output[['CRSpecies']][q], 
-                        " (turbine model ", params$model_output[['Turbines']][i], " MW)", sep="")
+                        " (turbine model ", params$model_output[['Turbines']][i], ")", sep="")
   }
   
   model_out_melt <- reshape2::melt(model_out, value.name = "coll_rate")
@@ -669,8 +690,8 @@ for(q in 1:num_species){
       dplyr::summarise(mean_coll_rate = mean(coll_rate, na.rm = T), 
                        lower_coll_rate = quantile(coll_rate, c(0.025), na.rm=TRUE),
                        upper_coll_rate = quantile(coll_rate, c(0.975), na.rm=TRUE)) %>% 
-      dplyr::mutate(mean_95CI =  paste(round(mean_coll_rate, 2), " (", round(lower_coll_rate, 2), 
-                                       ", ", round(upper_coll_rate, 2), ")", sep = ""))
+      dplyr::mutate(mean_95CI =  paste(round(mean_coll_rate, 3), " (", round(lower_coll_rate, 3), 
+                                       ", ", round(upper_coll_rate, 3), ")", sep = ""))
     
     monthly_collision_rate_summary[which(is.na(monthly_collision_rate_summary$lower_coll_rate)), "mean_95CI"] <- NA   
     
@@ -678,15 +699,15 @@ for(q in 1:num_species){
     annual_collision_rate <- mean(annual_collision_rate_melt$coll_rate, na.rm=T)
     annual_lower_coll_rate <- quantile(annual_collision_rate_melt$coll_rate, c(0.025), na.rm=TRUE)
     annual_upper_coll_rate <- quantile(annual_collision_rate_melt$coll_rate, c(0.975), na.rm=TRUE)
-    annual_collision_rate_txt <- paste("Mean annual rate and 95% prediction interval: ",round(annual_collision_rate, 2), 
-                                       " (", round(annual_lower_coll_rate, 2), 
-                                       ", ", round(annual_upper_coll_rate, 2), ")", sep = "")
+    annual_collision_rate_txt <- paste("Mean annual rate and 95 perc. prediction interval: ",round(annual_collision_rate, 3), 
+                                       " (", round(annual_lower_coll_rate, 3), 
+                                       ", ", round(annual_upper_coll_rate, 3), ")", sep = "")
         
     #main plot title
     if(length(which(params$species_labels[,q] == params$model_output[['CRSpecies']][q]))>0){
-      main_label <- paste(params$species_labels[params$species_labels[,1] == params$model_output[['CRSpecies']][q], 2], " (turbine model ", params$model_output[['Turbines']][i], " MW)", sep="")
+      main_label <- paste(params$species_labels[params$species_labels[,1] == params$model_output[['CRSpecies']][q], 2], " (turbine model ", params$model_output[['Turbines']][i], ")", sep="")
     }else{
-      main_label <- paste(params$model_output[['CRSpecies']][q],  " (turbine model ", params$model_output[['Turbines']][i], " MW)", sep="")
+      main_label <- paste(params$model_output[['CRSpecies']][q],  " (turbine model ", params$model_output[['Turbines']][i], ")", sep="")
     }
     
     #must use print for ggplot in rmarkdown file in a loop as it otherwise does not get outputted to the doc
@@ -713,54 +734,56 @@ for(q in 1:num_species){
 }
 
 ```
-
-\newpage
-
-```{r, fig5, fig.height = 4, echo=FALSE, warning=FALSE, message = FALSE, fig.cap="If multiple turbine models were run, this space shows histograms comparing the difference in the total number of collisions per year between models. The y-axis shows the relative frequency (0-1) among iterations of each value for the difference between models, labeled by their power output. If the entire histogram lies above zero, the number of collisions was always higher for model listed first. "}
-
-num_turb_mods <- length(params$model_output[['Turbines']])
-if(num_turb_mods>1){
-  #generate combination of turbine pairs
-  turbs_pair <- combn(num_turb_mods, 2)
-  
-  for(i in 1:min(length(turbs_pair[1,]), 10)){
-    data_run1 <- rowSums(params$model_output[[as.numeric(params$option)]][[params$model_output[['CRSpecies']][1]]][[turbs_pair[1,i]]], na.rm=TRUE)
-    data_run2 <- rowSums(params$model_output[[as.numeric(params$option)]][[params$model_output[['CRSpecies']][1]]][[turbs_pair[2,i]]], na.rm=TRUE)
-    data_diff <- data_run1 - data_run2
-    #check to see if any difference, if there is one, plot
-    if(data_diff > 0 | data_diff < 0){
-      if(length(which(params$species_labels[,1] == params$model_output[['CRSpecies']][1]))>0){
-        main_label <- paste(params$species_labels[params$species_labels[,1] == params$model_output[['CRSpecies']][1], 2], " (turbine model ", params$model_output[['Turbines']][turbs_pair[2,i]], " - model ", params$model_output[['Turbines']][turbs_pair[1,i]], ")", sep="")
-      }else{
-        main_label <- paste(params$model_output[['CRSpecies']][1], " (turbine model ", params$model_output[['Turbines']][turbs_pair[2,i]], " - model ", params$model_output[['Turbines']][turbs_pair[1,i]], ")", sep="")
-      }
-      
-      print(ggplot(data.frame(data_diff=data_diff), aes(data_diff)) + 
-              #center on integers use binwidth = 1 and center = 0; but modified to make bar end at number for thresholding
-              stat_bin(bins=12, aes(y = stat(count / sum(count))), col="darkgreen", fill="darkgreen", binwidth = 1, center = 0.5) +
-              ggtitle(main_label) +
-              xlab("Difference in number of collisions/year") +
-              ylab("Relative frequency") +
-              theme_classic() + 
-              theme(plot.title = element_text(hjust = 0.5),
-                    legend.position = "none"
-              ))
-    } else {
-      ggplot() +
-        theme_void() +
-        geom_text(aes(0,0,label="No difference in turbine model specified.")) +
-        xlab(NULL) #optional, but safer in case another theme is applied later
-      }
-  }
-} else {
-  ggplot() +
-    theme_void() +
-    geom_text(aes(0,0,label="This plot left intentionally blank.\nOnly one turbine model specified.")) +
-    xlab(NULL) #optional, but safer in case another theme is applied later
-}
-cat('\n\n')
-
-
-```
-
 <br>
+
+<!-- Below is confusing. Strike for now. -->
+<!-- \newpage -->
+
+<!-- ```{r, fig5, fig.height = 4, echo=FALSE, warning=FALSE, message = FALSE, fig.cap="If multiple turbine models were run, this space shows histograms comparing the difference in the total number of collisions per year between models. The y-axis shows the relative frequency (0-1) among iterations of each value for the difference between models, labeled by their power output. If the entire histogram lies above zero, the number of collisions was always higher for model listed first. "} -->
+<!-- #100322 - ATG Fixed error comparing options, these were swapped relative to the caption -->
+<!-- num_turb_mods <- length(params$model_output[['Turbines']]) -->
+<!-- if(num_turb_mods>1){ -->
+<!--   #generate combination of turbine pairs -->
+<!--   turbs_pair <- combn(num_turb_mods, 2) -->
+
+<!--   for(i in 1:min(length(turbs_pair[1,]), 10)){ -->
+<!--     data_run1 <- rowSums(params$model_output[[as.numeric(params$option)]][[params$model_output[['CRSpecies']][1]]][[turbs_pair[1,i]]], na.rm=TRUE) -->
+<!--     data_run2 <- rowSums(params$model_output[[as.numeric(params$option)]][[params$model_output[['CRSpecies']][1]]][[turbs_pair[2,i]]], na.rm=TRUE) -->
+<!--     data_diff <- data_run1 - data_run2 -->
+<!--     #check to see if any difference, if there is one, plot - need only be one true difference (thus sum) -->
+<!--     if(sum(data_diff > 0) > 1 | sum(data_diff < 0) > 1){ -->
+<!--       if(length(which(params$species_labels[,1] == params$model_output[['CRSpecies']][1]))>0){ -->
+<!--         main_label <- paste(params$species_labels[params$species_labels[,1] == params$model_output[['CRSpecies']][1], 2], " (turbine model ", params$model_output[['Turbines']][turbs_pair[1,i]], " - model ", params$model_output[['Turbines']][turbs_pair[2,i]], ")", sep="") -->
+<!--       }else{ -->
+<!--         main_label <- paste(params$model_output[['CRSpecies']][1], " (turbine model ", params$model_output[['Turbines']][turbs_pair[2,i]], " - model ", params$model_output[['Turbines']][turbs_pair[1,i]], ")", sep="") -->
+<!--       } -->
+
+<!--       print(ggplot(data.frame(data_diff=data_diff), aes(data_diff)) +  -->
+<!--               #center on integers use binwidth = 1 and center = 0; but modified to make bar end at number for thresholding -->
+<!--               stat_bin(bins=12, aes(y = stat(count / sum(count))), col="darkgreen", fill="darkgreen", binwidth = 1, center = 0.5) + -->
+<!--               ggtitle(main_label) + -->
+<!--               xlab("Difference in number of collisions/year") + -->
+<!--               ylab("Relative frequency") + -->
+<!--               theme_classic() +  -->
+<!--               theme(plot.title = element_text(hjust = 0.5), -->
+<!--                     legend.position = "none" -->
+<!--               )) -->
+<!--     } else { -->
+<!--       ggplot() + -->
+<!--         theme_void() + -->
+<!--         geom_text(aes(0,0,label="No difference in turbine model specified.")) + -->
+<!--         xlab(NULL) #optional, but safer in case another theme is applied later -->
+<!--       } -->
+<!--   } -->
+<!-- } else { -->
+<!--   ggplot() + -->
+<!--     theme_void() + -->
+<!--     geom_text(aes(0,0,label="This plot left intentionally blank.\nOnly one turbine model specified.")) + -->
+<!--     xlab(NULL) #optional, but safer in case another theme is applied later -->
+<!-- } -->
+<!-- cat('\n\n') -->
+
+
+<!-- ``` -->
+
+<!-- <br> -->

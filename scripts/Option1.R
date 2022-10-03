@@ -35,7 +35,7 @@ Option1_collisions_No_Avoid <- Option1_Transits*(P_Collision/100)
 # ATG - change 0's no NAs
 Option1_CollisionRate <- data.frame(matrix(data = NA, nrow = 12, ncol = 2))
 names(Option1_CollisionRate) <- c("Month", "Collisions")
-Option1_CollisionRate$Month <- monthLabels
+Option1_CollisionRate$Month <- month.abb
 
 # Account for the avoidance rate to remove those animals that avoided the wind farm and also the large array correction factor if needed
 if(LargeArrayCorrection == "yes"){
