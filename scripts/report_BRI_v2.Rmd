@@ -81,12 +81,15 @@ SCRAM was developed by Biodiversity Research Institute, the University of Rhode 
   
 option_names <-  c("Option 1: faster approximation", NA,"Option 3: slower but more accurate assessment")
 
-cat(paste0("SCRAM - the Stochastic Collision Risk Assessment for Movement version ", params$SCRAM_version,"\nwas run for ", params$iterations, " iterations using ", option_names[as.numeric(params$option)], "\n", 
+cat(paste0("SCRAM - the Stochastic Collision Risk Assessment for Movement version ", "\n",
+          "Version: " ,params$SCRAM_version, "\n",
+          "Iterations: ", params$iterations, "\n", 
+          "Model option: ", option_names[as.numeric(params$option)], "\n", 
           "Project: ", params$project, "\n",
           "Modeler: ", params$modeler, "\n",
           "The model run was started at: ",  format(params$run_start_time, "%a %b %d %X %Y %Z", tz = "America/New_York"), "\n",
           "The model run was completed at: ",  format(params$run_end_time, "%a %b %d %X %Y %Z", tz = "America/New_York"), "\n",
-          paste0(params$prob_exceed, collapse="\n")), sep = "")
+          paste0(params$prob_exceed, collapse="\n")))
 
 ```
 
@@ -201,7 +204,6 @@ sampled_subset <- subset(
 n_table_cols1 <- length(sampled_subset[1,])
 
 col_names <- colnames(sampled_subset)
-#turb_params_table <- mat.or.vec(num_species*num_turb_mods, (n_table_cols + 2))
 turb_params_table <- mat.or.vec(num_species*num_turb_mods, (n_table_cols1 + 2))
 
 for(e in 1:num_species){
@@ -315,7 +317,7 @@ for(e in 1:num_species){
 }
 colnames(turb_params_table_pt1) <- c("Species", "Turbine model", "Jan Op.", "Feb Op.", "Mar Op.", "Apr Op.", "May Op.", "Jun Op.")
 turb_params_table_pt1 <- as.data.frame(turb_params_table_pt1)
-turb_params_table_pt1 <- turb_params_table_pt1[order(turb_params_table_pt1$Species, turb_params_table_pt1$`Turbine model`),]
+# turb_params_table_pt1 <- turb_params_table_pt1[order(turb_params_table_pt1$Species, turb_params_table_pt1$`Turbine model`),]
 
 kbl(turb_params_table_pt1,booktabs=T, caption = "Monthly wind farm operational data (mean and 95 perc. range) is given for each wind farm specification.", row.names = F) %>%
   kable_styling(position="left", full_width=F, latex_options = c("HOLD_position", "striped")) %>% 
@@ -359,7 +361,7 @@ for(e in 1:num_species){
 
 colnames(turb_params_table_pt2) <- c("Species", "Turbine model", "Jul Op.", "Aug Op.", "Sep Op.", "Oct Op.", "Nov Op.", "Dec Op.")
 turb_params_table_pt2 <- as.data.frame(turb_params_table_pt2)
-turb_params_table_pt2 <- turb_params_table_pt2[order(turb_params_table_pt2$Species, turb_params_table_pt2$`Turbine model`),]
+# turb_params_table_pt2 <- turb_params_table_pt2[order(turb_params_table_pt2$Species, turb_params_table_pt2$`Turbine model`),]
 
 kbl(turb_params_table_pt2, booktabs=T, caption = "Monthly wind farm operational data (mean and 95 perc. range) is given for each wind farm specification.", row.names = F) %>%
   kable_styling(position="left", full_width=F, latex_options = c("HOLD_position", "striped")) %>% 
@@ -512,19 +514,28 @@ kbl(all_models_summary, booktabs=T, caption = "The predicted mean and 95 perc. p
 
 num_species <- length(params$model_output[['CRSpecies']])
 num_turb_mods <- length(params$model_output[['Turbines']])
+nbins = 20
+
 for(q in 1:num_species){
   for(i in 1:num_turb_mods){
     if(!is.null(params$model_output$monthCollsnReps_opt1)){
       # if(sum(params$model_output[[as.numeric(params$option)]][[params$model_output[['CRSpecies']][q]]][[i]], na.rm=TRUE)>0){
         NA_index <- which(is.na(params$model_output[[as.numeric(params$option)]][[params$model_output[['CRSpecies']][q]]][[i]][1,]))
-        outvector <- round(rowSums(params$model_output[[as.numeric(params$option)]][[params$model_output[['CRSpecies']][q]]][[i]], na.rm = TRUE))
+        outvector <- round(rowSums(params$model_output[[as.numeric(params$option)]][[params$model_output[['CRSpecies']][q]]][[i]], na.rm = TRUE), digits = 3)
+        # print(str(outvector))
+        
         xmin <- round(min(outvector, na.rm=TRUE))
         xmax <- round(max(outvector, na.rm=TRUE))
-        freq_outvector <- table(outvector)
-
-        if (sum(outvector)==0){
+        # freq_outvector <- table(outvector)
+        shut_up({
+          hist_outvector <- graphics::hist(outvector, breaks = nbins, plot = F)
+          freq_outvector <- hist_outvector$counts
+          bar_outvector <- as.data.frame(cbind(mids=hist_outvector$mids, density=freq_outvector/sum(freq_outvector)))
+        })
+        # print(str(bar_outvector))
+        
+        if (sum(outvector, na.rm=T)==0){
           #no collisions provide a modified figure
-          no_coll = T
           plot_xmin = 0
           plot_xmax = 10
           plot_ymin = 0
@@ -539,7 +550,7 @@ for(q in 1:num_species){
             plot_xmax = 10
           } else {plot_xmax = xmax + 2}
           plot_ymin = 0
-          plot_ymax = freq_outvector[[1]]/sum(freq_outvector)*1.1  #calculate frequency of first element to set as max y
+          plot_ymax = max(freq_outvector)/sum(freq_outvector)*1.1  #calculate frequency of first most numerous element to set as max y
           x_ann = 0
           y_ann = 0
           fig_text = ""
@@ -556,29 +567,26 @@ for(q in 1:num_species){
         month_col <- rep("dark blue", 12)
         month_col[NA_index] <- rgb(0, 0, 0, 0.8)
         bold[NA_index] <- 1 # make bold those months with data
-        p1 <- ggplot(data.frame(outvector=outvector), aes(outvector)) + 
+        p1 <- ggplot2::ggplot(bar_outvector, aes(x=mids, y=density)) +
           #center on integers use binwidth = 1 and center = 0; but modified to make bar end at number for thresholding
-          stat_bin(bins=12, aes(y = stat(count / sum(count))), col="darkgreen", fill="darkgreen", binwidth = 0.5, center = 0.5) +
-          # annotate("rect", xmin=-0.5, xmax=params$threshold, ymin=0, ymax=1, fill=rgb(1, 1, 1, 0.65), col=rgb(0, 0, 0, 0)) +
-          # geom_density(adjust=3, trim = T) +
+          # stat_bin(bins=12, aes(y = stat(count / sum(count))), col="darkgreen", fill="darkgreen", binwidth = 0.5, center = 0.5) +
+          #change to geom_col to have more control over bars with addition of limits to 0 and above to threshold
+          ggplot2::geom_col(fill="darkgreen") +
+          annotate("rect", xmin=0, xmax=params$threshold, ymin=0, ymax=plot_ymax, fill=rgb(1, 1, 1, 0.65), col=rgb(0, 0, 0, 0)) +
           ggtitle(main_label) +
           scale_x_continuous(breaks=scales::pretty_breaks()) +
-          xlim(c(plot_xmin, plot_xmax)) +
-          ylim(c(plot_ymin, plot_ymax)) +
+          # xlim(c(plot_xmin, plot_xmax)) +
+          # ylim(c(plot_ymin, plot_ymax)) +
           xlab("Total collisions per year over months highlighted below") +
           ylab("Frequency") +
           annotate("text", x=x_ann, y=y_ann, label = fig_text) +
           geom_vline(xintercept = params$threshold, color = "red", linetype = "dashed") +
-          annotate("text", x=params$threshold, y=plot_ymax*0.5, col="red", label = "Input threshold", angle=90, vjust=1.5) +
+          annotate("text", x=params$threshold, y=plot_ymax*0.5, col="red", label = "Input threshold", angle=90, vjust=-0.75) +
           theme_classic()
         
-        print(cowplot::ggdraw(cowplot::add_sub(p1, label = month.abb, x=seq(0.1,0.9,0.8/11), color = month_col, size = 10, fontface = bold)))
-      # }else{
-      #   ggplot() +
-      #     theme_void() +
-      #     geom_text(aes(0,0,label="This plot left intentionally blank.\nOption not run.")) +
-      #     xlab(NULL) #optional, but safer in case another theme is applied later
-      # }
+        p2 <- cowplot::ggdraw(cowplot::add_sub(p1, label = month.abb, x=seq(0.1,0.9,0.8/11), color = month_col, size = 10, fontface = bold))
+        plot(p2)
+
       #There needs to be spaces between plots in R Markdown if they are to be given their own caption
       #https://stackoverflow.com/questions/52788015/looping-through-a-list-of-ggplots-and-giving-each-a-figure-caption-using-knitr
       cat('\n\n')
@@ -593,7 +601,7 @@ for(q in 1:num_species){
 
 \newpage
 
-```{r, fig3, fig.height = 4, echo=FALSE, warning=FALSE, message = FALSE, fig.cap="The predicted mean and 95 perc. prediction intervals of the number of collisions per month. Results are not shown for months that do not have movement data."}
+```{r, fig3, fig.height = 4, echo=FALSE, warning=FALSE, message = FALSE, fig.cap="The predicted mean and 95 perc. prediction intervals of the number of collisions per month. Results are not shown for months that do not have movement data. Total annual collision rate and 95 perc. prediction interval are given at top. The threshold is shown divided by the number of months that movement data were available."}
 
 num_species <- length(params$model_output[['CRSpecies']])
 num_turb_mods <- length(params$model_output[['Turbines']])
@@ -602,8 +610,9 @@ for(q in 1:num_species){
     
   # model_out <- params$model_output[[as.numeric(params$option)]][[params$model_output[['CRSpecies']][1]]][[1]]
   model_out <- params$model_output[[as.numeric(params$option)]][[params$model_output[['CRSpecies']][q]]][[i]]
+  NA_index <- which(is.na(params$model_output[[as.numeric(params$option)]][[params$model_output[['CRSpecies']][q]]][[i]][1,]))
 
-  #main label creation
+    #main label creation
   if(length(which(params$species_labels[,1] == params$model_output[['CRSpecies']][q]))>0){
     main_label <- paste(
       params$species_labels[params$species_labels[,1] == params$model_output[['CRSpecies']][q], 2], 
@@ -624,21 +633,39 @@ for(q in 1:num_species){
     dplyr::group_by(month) %>% 
     dplyr::summarise(mean_coll_rate = mean(coll_rate, na.rm = T), 
               lower_coll_rate = quantile(coll_rate, c(0.025), na.rm=TRUE),
-              upper_coll_rate = quantile(coll_rate, c(0.975), na.rm=TRUE)
-              )
+              upper_coll_rate = quantile(coll_rate, c(0.975), na.rm=TRUE))
+  
+   #calculate annual summary of model runs, mean of sum of posteriors and then quantiles of these sums for predict interval
+  annual_summary <- model_out_melt %>% 
+    dplyr::group_by(iter) %>% 
+    dplyr::summarise(sum_monthly = sum(coll_rate, na.rm = T))
+  
+  annual_rate <- annual_summary %>% 
+    dplyr::mutate(mean = round(mean(annual_summary$sum_monthly, na.rm=TRUE), 3),
+                   lower = round(quantile(annual_summary$sum_monthly, c(0.025), na.rm=TRUE), 3),
+                   upper = round(quantile(annual_summary$sum_monthly, c(0.975), na.rm=TRUE), 3))
+  
+  annual_collision_rate_txt <- paste0("Total annual collision rate and 95 perc. prediction interval: ",annual_rate$mean, 
+                                   " (", annual_rate$lower,", ", annual_rate$upper, ")")
+    
   #determine max upper to give a bit more space to the y axis
   max_upper <-  max(model_summary$upper_coll_rate, na.rm = T)
   y_limit <- ceiling(max_upper + max_upper * 0.25) 
   
+  #calculate monthly threshold based on number of modeled months, since most months don't contribute data
+  monthly_threshold <- params$threshold/(12-length(NA_index))
+  
   print(ggplot(model_summary) +
+    geom_hline(yintercept = monthly_threshold, color = "red", linetype = "dashed") +
     geom_point(aes(x=month, y=mean_coll_rate)) +
     geom_linerange(aes(x = month, ymin = lower_coll_rate, ymax = upper_coll_rate)) + 
-    ggtitle(main_label, ) +
+    ggtitle(main_label, subtitle = annual_collision_rate_txt) +
     ylab("Number of collisions/month") +
     expand_limits(y=y_limit) +
     theme_classic() + 
     theme(axis.title.x = element_blank(),
-          plot.title = element_text(hjust = 0.5)
+          plot.title = element_text(hjust = 0.5),
+          plot.subtitle = element_text(hjust = 0.5)
     ))
   cat('\n\n')
 
@@ -647,94 +674,104 @@ for(q in 1:num_species){
 
 ```
 
-\newpage
+<!-- \newpage -->
 
-```{r, fig4, fig.height = 4, echo=FALSE, warning=FALSE, message = FALSE, fig.cap="The mean number of collisions per month for each turbine model combination. A sample of 100 runs of the of simulation are plotted showing the typical variation among iterations. The iterations among this set that exceed the user-specified threshold for the number of collisions, if set, are shown in red; iterations below this threshold are shown in blue. Since the threshold is a yearly value, the threshold here is that value divided by 12. The annual and monthly mean (95 perc. prediction interval) for al iterations are shown at top (annual) and for each month to the right of the plot. "}
+<!-- ```{r, fig4, fig.height = 4, echo=FALSE, warning=FALSE, message = FALSE, fig.cap="The mean number of collisions per month for each turbine model combination. A sample of 100 runs of the of simulation are plotted showing the typical variation among iterations. The iterations among this set that exceed the user-specified threshold for the number of collisions, if set, are shown in red; iterations below this threshold are shown in blue. Since the threshold is a yearly value, the threshold here is that value divided by 12. The annual and monthly mean (95 perc. prediction interval) for all iterations are shown at top (annual) and for each month to the right of the plot. "} -->
 
-num_species <- length(params$model_output[['CRSpecies']])
-num_turb_mods <- length(params$model_output[['Turbines']])
-for(q in 1:num_species){
-  for(i in 1:num_turb_mods){
-    full_model_results <- params$model_output[[as.numeric(params$option)]][[params$model_output[['CRSpecies']][q]]][[i]]
-    model_out_100 <- full_model_results[1:100, ]
-    model_out_100_melt <- reshape2::melt(model_out_100, value.name = "coll_rate")
-    model_out_100_melt <- model_out_100_melt %>% 
-      dplyr::rename("month"="variable")
-    model_out_100_melt$iter <- rep(seq(1:length(model_out_100$Jan)), 12)
-    #color values above threshold differently
-    model_out_100_melt$exceed_threshold <- "below"
-    model_out_100_melt[which(model_out_100_melt$coll_rate > (params$threshold/12)), "exceed_threshold"] <- "above"
-    
-    #reverse month order
-    model_out_100_melt$month <- factor(model_out_100_melt$month, levels = rev(month.abb))
-    
-    #determine max upper to give a bit more space to the y axis
-    max_upper <-  max(model_out_100_melt$coll_rate, na.rm = T)
-    y_limit <- ceiling(max_upper + max_upper * 0.2) 
-    
-    # #calculate mean and 95% CI for each month for 100 iters
-    # model_100_summary <- model_out_100_melt %>%
-    #   dplyr::group_by(month) %>%
-    #   dplyr::summarise(mean_coll_rate = mean(coll_rate, na.rm = T),
-    #             lower_coll_rate = quantile(coll_rate, c(0.025), na.rm=TRUE),
-    #             upper_coll_rate = quantile(coll_rate, c(0.975), na.rm=TRUE)) %>%
-    #   dplyr::mutate(mean_95CI =  paste(round(mean_coll_rate, 2), " (", round(lower_coll_rate, 2),
-    #                             ", ", round(upper_coll_rate, 2), ")", sep = ""))
+<!-- num_species <- length(params$model_output[['CRSpecies']]) -->
+<!-- num_turb_mods <- length(params$model_output[['Turbines']]) -->
+<!-- for(q in 1:num_species){ -->
+<!--   for(i in 1:num_turb_mods){ -->
+<!--     full_model_results <- params$model_output[[as.numeric(params$option)]][[params$model_output[['CRSpecies']][q]]][[i]] -->
+<!--     model_out_100 <- full_model_results[1:100, ] -->
+<!--     model_out_100_melt <- reshape2::melt(model_out_100, value.name = "coll_rate") -->
+<!--     model_out_100_melt <- model_out_100_melt %>%  -->
+<!--       dplyr::rename("month"="variable") -->
+<!--     model_out_100_melt$iter <- rep(seq(1:length(model_out_100$Jan)), 12) -->
+<!--     #color values above threshold differently -->
+<!--     model_out_100_melt$exceed_threshold <- "below" -->
+<!--     model_out_100_melt[which(model_out_100_melt$coll_rate > (params$threshold/12)), "exceed_threshold"] <- "above" -->
 
-    annual_collision_rate_melt <- reshape2::melt(full_model_results, value.name = "coll_rate") %>% 
-      dplyr::rename("month"="variable")
-    
-    #calculate mean and 95% CI for each month for all iters
-    monthly_collision_rate_summary <- annual_collision_rate_melt %>% 
-      dplyr::group_by(month) %>% 
-      dplyr::summarise(mean_coll_rate = mean(coll_rate, na.rm = T), 
-                       lower_coll_rate = quantile(coll_rate, c(0.025), na.rm=TRUE),
-                       upper_coll_rate = quantile(coll_rate, c(0.975), na.rm=TRUE)) %>% 
-      dplyr::mutate(mean_95CI =  paste(round(mean_coll_rate, 3), " (", round(lower_coll_rate, 3), 
-                                       ", ", round(upper_coll_rate, 3), ")", sep = ""))
-    
-    monthly_collision_rate_summary[which(is.na(monthly_collision_rate_summary$lower_coll_rate)), "mean_95CI"] <- NA   
-    
-    #P. Loring requested annual collision rate. 
-    annual_collision_rate <- mean(annual_collision_rate_melt$coll_rate, na.rm=T)
-    annual_lower_coll_rate <- quantile(annual_collision_rate_melt$coll_rate, c(0.025), na.rm=TRUE)
-    annual_upper_coll_rate <- quantile(annual_collision_rate_melt$coll_rate, c(0.975), na.rm=TRUE)
-    annual_collision_rate_txt <- paste("Mean annual rate and 95 perc. prediction interval: ",round(annual_collision_rate, 3), 
-                                       " (", round(annual_lower_coll_rate, 3), 
-                                       ", ", round(annual_upper_coll_rate, 3), ")", sep = "")
-        
-    #main plot title
-    if(length(which(params$species_labels[,q] == params$model_output[['CRSpecies']][q]))>0){
-      main_label <- paste(params$species_labels[params$species_labels[,1] == params$model_output[['CRSpecies']][q], 2], " (turbine model ", params$model_output[['Turbines']][i], ")", sep="")
-    }else{
-      main_label <- paste(params$model_output[['CRSpecies']][q],  " (turbine model ", params$model_output[['Turbines']][i], ")", sep="")
-    }
-    
-    #must use print for ggplot in rmarkdown file in a loop as it otherwise does not get outputted to the doc
-    print(ggplot(model_out_100_melt) +
-      geom_jitter(aes(x=month, y=coll_rate, col=exceed_threshold), width = 0.05, height = 0.05) +
-      # annotate("text", x="Feb", y=y_limit*0.5, label = annual_collision_rate_txt) +
-      # geom_text(data=model_100_summary, aes(x=month, y=y_limit*0.9, label=mean_95CI), hjust=0.9) +
-      geom_text(data=monthly_collision_rate_summary, aes(x=month, y=y_limit*1.05, label=mean_95CI), hjust=0.9) +
-      ggtitle(main_label, subtitle = annual_collision_rate_txt) +
-      ylab("Number of collisions/month") +
-      scale_y_continuous(limits = c(0, y_limit), oob = scales::squish) +
-      expand_limits(y=y_limit) +
-      coord_flip() +
-      scale_colour_manual(values = c("darkred", "blue")) +
-      theme_classic() + 
-      theme(axis.title.y = element_blank(),
-            plot.title = element_text(hjust = 0.5),
-            plot.subtitle = element_text(hjust = 0.5),
-            legend.position = "none"
-      ))
-    cat('\n\n')
+<!--     #reverse month order -->
+<!--     model_out_100_melt$month <- factor(model_out_100_melt$month, levels = rev(month.abb)) -->
 
-  }
-}
+<!--     #determine max upper to give a bit more space to the y axis -->
+<!--     max_upper <-  max(model_out_100_melt$coll_rate, na.rm = T) -->
+<!--     y_limit <- ceiling(max_upper + max_upper * 0.2)  -->
 
-```
-<br>
+<!--     # #calculate mean and 95% CI for each month for 100 iters -->
+<!--     # model_100_summary <- model_out_100_melt %>% -->
+<!--     #   dplyr::group_by(month) %>% -->
+<!--     #   dplyr::summarise(mean_coll_rate = mean(coll_rate, na.rm = T), -->
+<!--     #             lower_coll_rate = quantile(coll_rate, c(0.025), na.rm=TRUE), -->
+<!--     #             upper_coll_rate = quantile(coll_rate, c(0.975), na.rm=TRUE)) %>% -->
+<!--     #   dplyr::mutate(mean_95CI =  paste(round(mean_coll_rate, 2), " (", round(lower_coll_rate, 2), -->
+<!--     #                             ", ", round(upper_coll_rate, 2), ")", sep = "")) -->
+
+<!--     annual_collision_rate_melt <- reshape2::melt(full_model_results, value.name = "coll_rate") -->
+<!--     annual_collision_rate_melt$iter <- rep(seq(1:length(annual_collision_rate_melt$Jan)), 12) -->
+
+<!--     #calculate annual summary of model runs, mean of sum of posteriors and then quantiles of these sums for predict interval -->
+<!--     monthly_collision_rate_summary <- annual_collision_rate_melt %>%  -->
+<!--       dplyr::group_by(iter) %>%  -->
+<!--       dplyr::summarise(sum_monthly = sum(coll_rate, na.rm = T),  -->
+<!--                        lower_coll_rate = quantile(coll_rate, c(0.025), na.rm=TRUE), -->
+<!--                        upper_coll_rate = quantile(coll_rate, c(0.975), na.rm=TRUE)) %>%  -->
+<!--       dplyr::mutate(mean_95CI =  paste(round(sum_monthly, 3), " (", round(lower_coll_rate, 3),  -->
+<!--                                        ", ", round(upper_coll_rate, 3), ")", sep = "")) -->
+
+<!--     monthly_collision_rate_summary[which(is.na(monthly_collision_rate_summary$lower_coll_rate)), "mean_95CI"] <- NA    -->
+
+<!--     #P. Loring requested annual collision rate.  -->
+<!--     # annual_collision_rate <- mean(annual_collision_rate_melt$coll_rate, na.rm=T) -->
+<!--     # annual_lower_coll_rate <- quantile(annual_collision_rate_melt$coll_rate, c(0.025), na.rm=TRUE) -->
+<!--     # annual_upper_coll_rate <- quantile(annual_collision_rate_melt$coll_rate, c(0.975), na.rm=TRUE) -->
+<!--     # annual_collision_rate_txt <- paste("Mean annual rate and 95 perc. prediction interval: ",round(annual_collision_rate, 3),  -->
+<!--     #                                    " (", round(annual_lower_coll_rate, 3),  -->
+<!--     #                                    ", ", round(annual_upper_coll_rate, 3), ")", sep = "") -->
+<!--     #      -->
+
+<!--     #calculate annual summary of model runs, mean of sum of posteriors and then quantiles of these sums for predict interval -->
+<!--     annual_summary <- annual_collision_rate_melt %>%  -->
+<!--       dplyr::group_by(iter) %>%  -->
+<!--       dplyr::summarise(sum_monthly = sum(coll_rate, na.rm = T)) -->
+
+<!--     annual_collision_rate_txt <- paste("Mean annual rate and 95 perc. prediction interval: ",round(mean(annual_summary$sum_monthly, na.rm=TRUE), 3),  -->
+<!--                                    " (", round(quantile(annual_summary$sum_monthly, c(0.025), na.rm=TRUE), 3),  -->
+<!--                                    ", ", round(quantile(annual_summary$sum_monthly, c(0.975), na.rm=TRUE), 3), ")", sep = "") -->
+
+<!--     #main plot title -->
+<!--     if(length(which(params$species_labels[,q] == params$model_output[['CRSpecies']][q]))>0){ -->
+<!--       main_label <- paste(params$species_labels[params$species_labels[,1] == params$model_output[['CRSpecies']][q], 2], " (turbine model ", params$model_output[['Turbines']][i], ")", sep="") -->
+<!--     }else{ -->
+<!--       main_label <- paste(params$model_output[['CRSpecies']][q],  " (turbine model ", params$model_output[['Turbines']][i], ")", sep="") -->
+<!--     } -->
+
+<!--     #must use print for ggplot in rmarkdown file in a loop as it otherwise does not get outputted to the doc -->
+<!--     print(ggplot(model_out_100_melt) + -->
+<!--       geom_jitter(aes(x=month, y=coll_rate, col=exceed_threshold), width = 0.05, height = 0.05) + -->
+<!--       # annotate("text", x="Feb", y=y_limit*0.5, label = annual_collision_rate_txt) + -->
+<!--       # geom_text(data=model_100_summary, aes(x=month, y=y_limit*0.9, label=mean_95CI), hjust=0.9) + -->
+<!--       geom_text(data=monthly_collision_rate_summary, aes(x=month, y=y_limit*1.05, label=mean_95CI), hjust=0.9) + -->
+<!--       ggtitle(main_label, subtitle = annual_collision_rate_txt) + -->
+<!--       ylab("Number of collisions/month") + -->
+<!--       scale_y_continuous(limits = c(0, y_limit), oob = scales::squish) + -->
+<!--       expand_limits(y=y_limit) + -->
+<!--       coord_flip() + -->
+<!--       scale_colour_manual(values = c("darkred", "blue")) + -->
+<!--       theme_classic() +  -->
+<!--       theme(axis.title.y = element_blank(), -->
+<!--             plot.title = element_text(hjust = 0.5), -->
+<!--             plot.subtitle = element_text(hjust = 0.5), -->
+<!--             legend.position = "none" -->
+<!--       )) -->
+<!--     cat('\n\n') -->
+
+<!--   } -->
+<!-- } -->
+
+<!-- ``` -->
+<!-- <br> -->
 
 <!-- Below is confusing. Strike for now. -->
 <!-- \newpage -->

@@ -32,10 +32,11 @@
 # 03 Oct 22 - 0.90 - fix movement model - some errors fixed by EMA, slight changes to report and manual. 
 # 07 Oct 22 - 0.91 - fix bug where prob. of exceedenc not updating on subsequent runs and figures don't update. Also fixed issue with report names
 #  not updating on re-runs, or zip files. 
+# 11 Oct 22 - 0.91.1 - fix histogram results and slight change to report output
 
 source("helpers.R")
-# SCRAM_version = "0.81.2 - Myrica gale"
-SCRAM_version = "0.91 - Brachycarpus"   #https://en.wikipedia.org/wiki/List_of_Atlantic_decapod_species
+# SCRAM_version = "0.91 - Brachycarpus"
+SCRAM_version = "0.91.1 - Lyrical Brachycarpus"   #https://en.wikipedia.org/wiki/List_of_Atlantic_decapod_species
 # run_start_time = NA
 # run_end_time = NA
 options(shiny.trace = F)
@@ -52,7 +53,7 @@ ui <- dashboardPage(
 
     tags$li(
       class = "dropdown",
-      actionLink("appvrsn", label = tags$b(paste("Stochastic Collision Risk Assessment for Movement: v", SCRAM_version), style = "font-size: 16px")),
+      actionLink("appvrsn", label = tags$b(paste("Stochastic Collision Risk Assessment for Movement: v", SCRAM_version), style = "font-size: 14px")),
       style = "float: left"
     ),
     tags$li(
@@ -61,7 +62,7 @@ ui <- dashboardPage(
         icon('fa-solid fa-book', "fa-2x"),
         style = "padding-top: 10px; padding-bottom: 10px",
         target = '_blank',
-        href = "SCRAM_manual_v091_100722.pdf"),
+        href = "SCRAM_manual_v0911_101722.pdf"),
       style = "float: left"
     ),
     tags$li(
@@ -632,8 +633,8 @@ server <- function(input, output, session) {
                          "Standard deviation of air gap (m)",
                          "Chord width of blade (m)",
                          "Standard deviation of blade width (m)",
-                         "Wind speed rating of turbine model (m/s)",
-                         "Standard deviation of wind speed rating (m/s)",
+                         "Mean wind speed (m/s) between cut-in and cut-out speeds or wind speed rating of the turbine model if wind speed is unavailable",
+                         "Standard deviation of wind speed or wind speed rating (m/s)",
                          "Pitch angle of blades (degrees relative to rotor plane)",
                          "Standard deviation of pitch angle of blades",
                          "Wind farm width (km)",
@@ -1254,28 +1255,28 @@ server <- function(input, output, session) {
     # spp_by_turbines$num_species <- length(CRM_fun()[['CRSpecies']])
     # spp_by_turbines$num_turb_mods <- length(CRM_fun()[['Turbines']])
     # spp_by_turbines$combos <-  isolate(spp_by_turbines$num_species * spp_by_turbines$num_turb_mods)
-    
+    # browser()
     plot_list = list()
     n = 1
+    nbins = 20
     for(q in 1:num_species) {
       for(i in 1:num_turb_mods) {
         if(!is.null(CRM_fun()$monthCollsnReps_opt1)){
           # ATG - an issue with plots not rendering in dynamic tabs; use local to get output correct
           # https://stackoverflow.com/questions/31993704/storing-ggplot-objects-in-a-list-from-within-loop-in-r
-          # main_label <- ""
-          # plot_list[[n]] <- local({if(sum(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][q]]][[i]], na.rm=TRUE)>0){
           plot_list[[n]] <- local({#if(sum(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][q]]][[i]], na.rm=TRUE)>0){
             
-            n = n
             NA_index <- which(is.na(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][q]]][[i]][1,]))
-            outvector <- round(rowSums(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][q]]][[i]], na.rm = TRUE))
+            outvector <- round(rowSums(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][q]]][[i]], na.rm = TRUE), digits = 3)
+
             xmin <- round(min(outvector, na.rm=TRUE))
             xmax <- round(max(outvector, na.rm=TRUE))
-            freq_outvector <- table(outvector)
-            print(freq_outvector)
-            if (sum(outvector)==0){
+            hist_outvector <- hist(outvector, breaks = nbins, plot = F)
+            freq_outvector <- hist_outvector$counts
+            bar_outvector <- as.data.frame(cbind(mids=hist_outvector$mids, density=freq_outvector/sum(freq_outvector)))
+
+            if (sum(outvector, na.rm=T)==0){
               #no collisions provide a modified figure
-              no_coll = T
               plot_xmin = 0
               plot_xmax = 10
               plot_ymin = 0
@@ -1290,8 +1291,8 @@ server <- function(input, output, session) {
                 plot_xmax = 10
               } else {plot_xmax = xmax + 2}
               plot_ymin = 0
-              plot_ymax = freq_outvector[[1]]/sum(freq_outvector)*1.1  #calculate frequency of first element to set as max y
-              print(paste("Ymax:", freq_outvector[[1]]/sum(freq_outvector)))
+              plot_ymax = max(freq_outvector)/sum(freq_outvector)*1.1  #calculate frequency of first element to set as max y
+              # print(paste("Ymax:", max(freq_outvector)/sum(freq_outvector)))
               x_ann = 0
               y_ann = 0
               fig_text = ""
@@ -1308,32 +1309,26 @@ server <- function(input, output, session) {
             month_col <- rep("dark blue", 12)
             month_col[NA_index] <- rgb(0, 0, 0, 0.8)
             bold[NA_index] <- 1 # make bold those months with data
-            p1 <- ggplot2::ggplot(data.frame(outvector=outvector), aes(outvector)) + 
+            p1 <- ggplot2::ggplot(bar_outvector, aes(x=mids, y=density)) + 
               #center on integers use binwidth = 1 and center = 0; but modified to make bar end at number for thresholding
-              # stat_bin(bins=12, aes(y = stat(count / sum(count))), col="darkgreen", fill="darkgreen", binwidth = 0.5, center = 0.5) +
-              stat_bin(aes(y = stat(count / sum(count))), col="darkgreen", fill="darkgreen", binwidth = 0.5, center = 0.5) +
-              # annotate("rect", xmin=-0.5, xmax=input$inputthreshold, ymin=0, ymax=1, fill=rgb(1, 1, 1, 0.65), col=rgb(0, 0, 0, 0)) +
-              # geom_density(adjust=4) + #, trim = T) +  #create a kernel density curve
+              # stat_bin(aes(y = stat(count / sum(count))), col="darkgreen", fill="darkgreen", binwidth = 0.5, center = 0.5) +
+              #change to geom_col to have more control over bars with addition of limits to 0 and above to threshold
+              geom_col(fill="darkgreen") +
+              annotate("rect", xmin=0, xmax=input$inputthreshold, ymin=0, ymax=plot_ymax, fill=rgb(1, 1, 1, 0.65), col=rgb(0, 0, 0, 0)) +
               ggtitle(main_label) +
               scale_x_continuous(breaks=scales::pretty_breaks()) +
-              xlim(c(plot_xmin, plot_xmax)) +
-              ylim(c(plot_ymin, plot_ymax)) +
+              # xlim(c(plot_xmin, plot_xmax)) +
+              # ylim(c(plot_ymin, plot_ymax)) +
               xlab("Total collisions per year over months highlighted below") +
               ylab("Frequency") +
               annotate("text", x=x_ann, y=y_ann, label = fig_text) +
               geom_vline(xintercept = input$inputthreshold, color = "red", linetype = "dashed") +
-              annotate("text", x=input$inputthreshold, y=plot_ymax*0.5, col="red", label = "Input threshold", angle=90, vjust=1.5) +
-              theme_classic() + 
-              theme(
-                # axis.title.y = element_blank(),
-                # axis.ticks.y = element_blank(),
-                # axis.text.y = element_blank(),
-              )
+              annotate("text", x=input$inputthreshold, y=plot_ymax*0.5, col="red", label = "Input threshold", angle=90, vjust=-0.75) +
+              theme_classic()
             
             p2 <- cowplot::ggdraw(cowplot::add_sub(p1, label = month.abb, x=seq(0.1,0.9,0.8/11), color = month_col, size = 10, fontface = bold))
-            # p3 <- cowplot::ggdraw(cowplot::add_sub(p2,label = str_wrap(fig.caption, width=120, exdent=6),  x=0.05, y=0.85, color = "black", size = 12, hjust = 0, vjust = 0.5))
             # Add plot to list to render in each tab
-            print(p2)
+            plot(p2)
           })
           # names(plot_list[[n]]) <- main_label
           n = n + 1
