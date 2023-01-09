@@ -371,9 +371,49 @@ kbl(turb_params_table_pt2, booktabs=T, caption = "Monthly wind farm operational 
   column_spec(3:8,width = "0.65in")
 
 ```
+
+```{r, table8, echo=FALSE, warning=FALSE, message = FALSE}
+
+num_species <- length(params$model_output[['CRSpecies']])
+monthlysppgrid_allspp <- data.frame()
+
+for(e in 1:num_species){
+  spp_code <- params$model_output[['CRSpecies']][e]
+  Species <- gsub("_", " ", spp_code)
+  monthlySpeciesGrid <- params$model_output$monthlySpeciesGridCount[[spp_code]]
+  
+  spp_count_out_melt <- reshape2::melt(monthlySpeciesGrid, value.name = "monthly_count")
+  spp_count_out_melt <- spp_count_out_melt %>% 
+    dplyr::rename("Month"="variable")
+  spp_count_out_melt$iter <- rep(seq(1:length(monthlySpeciesGrid$Jan)), 12)
+  #calculate mean and 95% CI  
+  monthlySpeciesGrid_summary <- spp_count_out_melt %>% 
+    dplyr::group_by(Month) %>% 
+    dplyr::summarise(`Mean count` = as.character(round(mean(monthly_count, na.rm = T), 3)), 
+                     `Lower pred. interval` = as.character(round(quantile(monthly_count, c(0.025), na.rm=TRUE), 3)),
+                     `Upper pred. interval` = as.character(round(quantile(monthly_count, c(0.975), na.rm=TRUE), 3))) %>% 
+    replace_na(list(`Mean count`="", `Lower pred. interval`="", `Upper pred. interval`="")) %>% 
+    mutate_if(is.character,
+              str_replace_all, pattern = "NaN", replacement = "") %>% 
+    mutate(Month = as.character(Month))
+  monthlySpeciesGrid_summary <- cbind(Species, monthlySpeciesGrid_summary)
+  monthlysppgrid_allspp <- rbind(monthlysppgrid_allspp, monthlySpeciesGrid_summary)
+}
+
+kbl(monthlysppgrid_allspp, booktabs=T, caption = "Monthly species count data (mean and 95 perc. range) at the wind farm location.", row.names = F) %>%
+  kable_styling(position="left", full_width=F, latex_options = c("HOLD_position", "striped")) %>% 
+  row_spec(0,bold=T) %>% 
+  column_spec(1,bold=T,color="red") %>% 
+  column_spec(2:5,width = "0.75in")
+
+
+```
+
 <br>
 <br>
 \newpage
+
+
 
 ```{r, fig1, fig.height = 7.5, echo=FALSE, warning=FALSE, message = FALSE, fig.cap = "A map of the species occurrence probabities and wind farm location.", fig.pos="t"}
 
@@ -402,8 +442,8 @@ quants_labels <- function(val) {
   return(cut(val, mean_bins, ordered_result=T, include.lowest = T, right = F))
 }
 
-spp_move_occur$quant <- as.factor(quants(spp_move_occur$mean))
-spp_move_occur$quant_labels <- quants_labels(spp_move_occur$mean)
+spp_move_occur$quant <- as.factor(quants(spp_move_occur$mean_daily_allmonths))
+spp_move_occur$quant_labels <- quants_labels(spp_move_occur$mean_daily_allmonths)
 
 fill_labels <- as.vector(levels(spp_move_occur$quant_labels))
 

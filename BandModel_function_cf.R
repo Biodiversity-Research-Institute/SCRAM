@@ -128,6 +128,7 @@ stochasticBand <- function(
   
   sampledParamsBird <- list()
   sampledParamsTurbine <- list()
+  monthlySpeciesGridCount <- list()
 
   # unmute the following 5 lines to set up results folder locally for saving results and run metadata
   # create folders and paths ------------------------------------------------
@@ -315,8 +316,7 @@ stochasticBand <- function(
       
       # outputs large (size S) rotor speeds and pitch - sampled into the DF
       source("scripts/sampleturbineparams.R", local=T)
-      
-      # browser() 
+
       
       #MonthlyOperational <- sampledTurbine %>% select(contains("Op", ignore.case = F))
       # cf added a version that accomplished the same goal without using 'dplyr'
@@ -404,8 +404,19 @@ stochasticBand <- function(
           CollRiskSinglePassage <- NTurbines * (pi * sampledTurbine$RotorRadius_m[i]^2)/(2 * sampledTurbine$RotorRadius_m[i] * TurbineData$WFWidth_km[t] * 1000) * 
             (P_Collision/100) * (MeanOperational[i]/100) * (1-sampledBirdParams$Avoidance[i])
           
+          #ATG - below seems to be an error in translation of the math from Band 2012 calc of the large 
+          # array correction factor. I have confirmed it was an issue at least starting with Masden 2015 code
+          # I looked at spreadsheet calcs for Band 2012 and the original equations.
+          # L_ArrayCF_suspect <- 1 - (NTurbRows - 1) / (2*NTurbRows) * CollRiskSinglePassage +
+          #   (NTurbRows - 1) * (2*NTurbRows)/(6 * NTurbRows^2) * (CollRiskSinglePassage ^2)
+          # 
+          # print(paste("L_ArrayCF suspect: ", L_ArrayCF_suspect))
+          
+          
           L_ArrayCF <- 1 - (NTurbRows - 1) / (2*NTurbRows) * CollRiskSinglePassage + 
-            (NTurbRows - 1) * (2*NTurbRows)/(6 * NTurbRows^2) * (CollRiskSinglePassage ^2)
+            (NTurbRows - 1) * (NTurbRows - 2)/(6 * NTurbRows^2) * (CollRiskSinglePassage ^2)
+          
+          # print(paste("L_ArrayCF correct: ", L_ArrayCF))
           
           FH.dat <- FlightHeightSpec[,flight.boot.sample[i]] ## using bootstraps
           # cf created a separate script to set up the flight height distribution and 
@@ -501,7 +512,8 @@ stochasticBand <- function(
       
       sampledParamsBird[[cSpec]][[cTurbModel]] <- sampledBirdParamsIters
       sampledParamsTurbine[[cSpec]][[cTurbModel]] <- sampledTurbineParamsIters
-      
+      monthlySpeciesGridCount[[cSpec]] <- monthlySpeciesGridCountIters
+
     } # end of t over number of turbines
     # End of the turbine loop -------------------------------------------------
     
@@ -546,7 +558,8 @@ stochasticBand <- function(
     return(list(monthCollsnReps_opt1 = monthCollsnReps_opt1, monthCollsnReps_opt2 = monthCollsnReps_opt2, 
                 monthCollsnReps_opt3 = monthCollsnReps_opt3, monthCollsnReps_opt4 = monthCollsnReps_opt4, 
                 monthCollsnReps_opt5 = monthCollsnReps_opt5, monthCollsnReps_opt6 = monthCollsnReps_opt6,
-                sampledParamsBird = sampledParamsBird, sampledParamsTurbine = sampledParamsTurbine,
+                sampledParamsBird = sampledParamsBird, sampledParamsTurbine = sampledParamsTurbine, 
+                monthlySpeciesGridCount = monthlySpeciesGridCount,
                 resultsSummary = resultsSummary, Turbines = TurbineData$TurbineModel, CRSpecies = CRSpecies))
     }
   }

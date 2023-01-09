@@ -1,3 +1,5 @@
+# Modified
+# ATG - 20 Dec 2022 - calculated monthly species counts (cumulative daily) for display
 
 # fill bird parameters with sampled values --------------------------------
   #= [NB Masden note: if no measure of variance provided, only the mean value is used
@@ -100,13 +102,20 @@ if(c_densOpt == "truncNorm"){
       }else{
       # if we have an SD, then we sample, otherwise just the mean
       #if(!is.na(workingSD[1,1])){
+      #create variable to hold species counts for selected grid
+        monthlySpeciesGridCountIters <- sampledSpeciesCount
+        
       if(!is.na(workingSD)){
         workingVect <- sampleCount_tnorm(iter, workingMean, workingSD)
         #Calculate the number of animals in a grid cell/sq km in a month
+        #movement_type[3] is the area of the grid cell in square km
+        #multiply popn. number * prop. occurrence in a cell / area of cell
         #sampledSpeciesCount[,grep(currentMonth, names(sampledSpeciesCount))] <- workingVect
+        monthlySpeciesGridCountIters[,grep(currentMonth, names(monthlySpeciesGridCountIters))] <- (workingVect*MovementSpec[movement.boot.sample, paste(currentMonth)])
         sampledSpeciesCount[,grep(currentMonth, names(sampledSpeciesCount))] <- (workingVect*MovementSpec[movement.boot.sample, paste(currentMonth)])/movement_type[3]
         # will explicitly rep mean, although not needed as filling into the DF
       }else{
+        monthlySpeciesGridCountIters[,grep(currentMonth, names(monthlySpeciesGridCountIters))] <- (rep(workingMean, iter)*MovementSpec[movement.boot.sample, paste(currentMonth)])
         #sampledSpeciesCount[,grep(currentMonth, names(sampledSpeciesCount))] <- rep(workingMean, iter)
         sampledSpeciesCount[,grep(currentMonth, names(sampledSpeciesCount))] <- (rep(workingMean, iter)*MovementSpec[movement.boot.sample, paste(currentMonth)])/movement_type[3]
         }

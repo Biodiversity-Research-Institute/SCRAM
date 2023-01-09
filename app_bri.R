@@ -33,10 +33,12 @@
 # 07 Oct 22 - 0.91 - fix bug where prob. of exceedenc not updating on subsequent runs and figures don't update. Also fixed issue with report names
 #  not updating on re-runs, or zip files. 
 # 11 Oct 22 - 0.91.1 - fix histogram results and slight change to report output
+# 22 Dec 22 - 1.0 - Changed species occup. model maps to show mean monthly, not mean cum. daily (over all months)
 
 source("helpers.R")
 # SCRAM_version = "0.91 - Brachycarpus"
-SCRAM_version = "0.91.1 - Lyrical Brachycarpus"   #https://en.wikipedia.org/wiki/List_of_Atlantic_decapod_species
+# SCRAM_version = "0.91.1 - Lyrical Brachycarpus"   #https://en.wikipedia.org/wiki/List_of_Atlantic_decapod_species
+SCRAM_version = "1.0 - Adela" #https://www.butterfliesandmoths.org/taxonomy
 # run_start_time = NA
 # run_end_time = NA
 options(shiny.trace = F)
@@ -397,7 +399,7 @@ ui <- dashboardPage(
                    )
                  ), 
                  fluidRow(
-                   p("\u00B9Mean occup. prob.= mean cumulative daily occupancy probability", 
+                   p("\u00B9Mean occup. prob.= mean monthly occupancy probability", 
                      style = "margin-left: 20px; margin-right: 20px; margin-top: -10px; color: steelblue; font-size: 12px"))
                  )
         )
@@ -688,16 +690,17 @@ server <- function(input, output, session) {
   meanpal <- reactiveVal()
   meanpal <- eventReactive(input$species_input, {
     #issue with zero inflated bins - need to generate non-zero quants
-    non_zero_mean <- spp_move_data()$mean[spp_move_data()$mean>0]
-    mean_bins <- c(0, quantile(non_zero_mean, probs=seq(0,1,1/8)))
-    colorBin("YlOrRd", spp_move_data()$mean, bins = mean_bins)
+    #changed from using cumulative daily to mean monthly (non-culative daily) occupancy
+    non_zero_mean <- spp_move_data()$mean_daily_allmonths[spp_move_data()$mean_daily_allmonths>0]
+    mean_bins <- c(0, quantile(non_zero_mean, probs=seq(0,1,1/7)))
+    colorBin("YlOrRd", spp_move_data()$mean_daily_allmonths, bins = mean_bins)
   })
   CIpal <- reactiveVal()
   CIpal <- eventReactive(input$species_input, {
     #issue with zero inflated bins - need to generate non-zero quants
-    non_zero_CIrange <- spp_move_data()$CI_range[spp_move_data()$CI_range>0]
-    CI_bins <- c(0, quantile(non_zero_CIrange, probs=seq(0,1,1/8)))
-    colorBin("Purples", spp_move_data()$CI_range, bins = CI_bins)
+    non_zero_CIrange <- spp_move_data()$mean_CI_range_daily_allmonths[spp_move_data()$mean_CI_range_daily_allmonths>0]
+    CI_bins <- c(0, quantile(non_zero_CIrange, probs=seq(0,1,1/7)))
+    colorBin("Purples", spp_move_data()$mean_CI_range_daily_allmonths, bins = CI_bins)
   })
   
   #render the map with the lat/longs given in the study area map panel
@@ -744,12 +747,21 @@ server <- function(input, output, session) {
         group = "Wind farm"
       ) %>%
       addPolygons(data=spp_move_data(), weight = 1, fillOpacity = 0.5, opacity = 1,
-                  color = ~meanpal()(mean),
-                  highlightOptions = highlightOptions(color = "white", weight = 2), group="Occup. prob.") %>%
+                  color = ~meanpal()(mean_daily_allmonths),
+                  highlightOptions = highlightOptions(color = "white", weight = 2), 
+                  label = ~formatC(mean_daily_allmonths, digits = 2, format = "g"),
+                  group="Occup. prob.") %>%
       # addPolygons(data=spp_move_data(), weight = 1, opacity = 0.75,
       #             color = ~CIpal()(CI_range),
       #             highlightOptions = highlightOptions(color = "white", weight = 2), group="CI range") %>%
-      addLegend(data=spp_move_data(), pal = meanpal(), values = ~mean, title = "\u00B9Mean occup. prob.", position = "bottomright", group="Occup. prob.") %>% 
+      #custom legend formatting labels
+      addLegend(data=spp_move_data(), pal = meanpal(), values = ~mean_daily_allmonths, 
+                title = "\u00B9Mean occup. prob.", 
+                labFormat = function(type, cuts, p) {
+                  n = length(cuts)
+                  paste0(formatC(cuts[-n], digits = 2, format = "g"), " &ndash; ", formatC(cuts[-1], digits = 2, format = "g"))
+                },
+                position = "bottomright", group="Occup. prob.") %>% 
       # addLegend(data=spp_move_data(), pal = CIpal(), values = ~CI_range, title = "\u00B2CI range occup. prob.",position = "bottomright", group="CI range") %>% 
       setView(lat = mean(wind_farm_df()$Latitude), lng = mean(wind_farm_df()$Longitude), zoom = 6) %>%
       #Layers control
@@ -1245,11 +1257,11 @@ server <- function(input, output, session) {
     if(running())interruptor$interrupt("Canceled")
   })
 
-  
   # main plot for annual collisions
   # ATG - modified to use ggplot instead as it's easier and a lot more sophisticated then base plot
   # observeEvent(input$run, {output$results_plot <- renderPlot({
   results_plots <- eventReactive(CRM_fun(), {
+    # browser()
     num_species <- length(CRM_fun()[['CRSpecies']])
     num_turb_mods <- length(CRM_fun()[['Turbines']])
     # spp_by_turbines$num_species <- length(CRM_fun()[['CRSpecies']])
@@ -1385,7 +1397,7 @@ server <- function(input, output, session) {
           threshold_text <- length(which(rowSums(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][q]]][[i]], na.rm=TRUE) > isolate(input$inputthreshold)))/
             length(rowSums(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][q]]][[i]]))
           if(threshold_text == 1){
-            threshold_text <- paste("<", isolate(round(1 - 1/input$slider1, log10(input$slider1))), sep=" ")
+            threshold_text <- paste(">", isolate(round(1 - 1/input$slider1, log10(input$slider1))), sep=" ")
           }
           else if(threshold_text == 0){
             threshold_text <- paste("<", isolate(round(((1/input$slider1)), log10(input$slider1))), sep=" ")
@@ -1628,7 +1640,10 @@ server <- function(input, output, session) {
             write.csv(pred_monthly_coll, file = paste0(tmpdir, "/SCRAM_crm_pred_monthly_", sindex, "_", tindex,".csv"), row.names = FALSE)
             write.csv(cbind(CRM_fun()[["sampledParamsTurbine"]][[sindex]][[tindex]],
                             CRM_fun()[["sampledParamsBird"]][[sindex]][[tindex]]), file = paste0(tmpdir, "/SCRAM_", sindex, "_", tindex,"_params.csv"), row.names = FALSE)
+            write.csv(CRM_fun()[["monthlySpeciesGridCount"]][[sindex]], file = paste0(tmpdir, "/SCRAM_", sindex,"_monthly_spp_count_data.csv"), row.names = FALSE)
             write.csv(tablereact7()[which(tablereact7()$Species==sindex),], file = paste0(tmpdir, "/SCRAM_", sindex, "_species_popn_data.csv"), row.names = FALSE)
+            #check below - some of this may be overwritten with the multiple species/turbines types - may need to pull some of this out of the loop
+            #add count data by grid as well below
             params <- list(SCRAM_version = SCRAM_version, project = input$project_name, modeler = input$modeler, run_start_time = isolate(run_times$start),  run_end_time = isolate(run_times$end), 
                            prob_exceed = isolate(prob_exceed_threshold()), iterations = input$slider1, model_output = CRM_fun(), threshold = input$inputthreshold, option = input$optionradio, 
                            species_labels = SpeciesLabels, species_popn_data = tablereact7()[which(tablereact7()$Species==sindex),], 
@@ -1640,6 +1655,7 @@ server <- function(input, output, session) {
             fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/SCRAM_crm_pred_monthly_", sindex, "_", tindex,".csv"))
             fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/SCRAM_", sindex, "_species_popn_data.csv"))
             fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/SCRAM_", sindex, "_", tindex,"_params.csv"))
+            fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/SCRAM_", sindex, "_monthly_spp_count_data.csv"))
             fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/SCRAM_", sindex, "_", tindex,"_sensitivity.csv"))
             fnames4zip1 <- c(fnames4zip1, paste0("data/SCRAM_", sindex, "_ht_dflt.csv"))
             fnames4zip1 <- c(fnames4zip1, paste0("data/movements/",sindex, "_movements.zip"))
