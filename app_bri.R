@@ -33,7 +33,8 @@
 # 07 Oct 22 - 0.91 - fix bug where prob. of exceedenc not updating on subsequent runs and figures don't update. Also fixed issue with report names
 #  not updating on re-runs, or zip files. 
 # 11 Oct 22 - 0.91.1 - fix histogram results and slight change to report output
-# 22 Dec 22 - 1.0 - Changed species occup. model maps to show mean monthly, not mean cum. daily (over all months)
+# 22 Dec 22 - 1.0 - Changed species occup. model maps to show mean monthly, not mean cum. daily (over all months), 
+#   also added last position models to compare to first position (of day) models
 
 source("helpers.R")
 # SCRAM_version = "0.91 - Brachycarpus"
@@ -174,7 +175,13 @@ ui <- dashboardPage(
         condition = ('input.project_name != "" & input.modeler != ""'),
         h4("2) Select the species or load species data:", style = "padding-left: 10px; margin-bottom: 0px"),
   
-        ################### Input: Select the species to model
+        ################### Input: Select the model type and species to model
+        radioButtons(inputId = "model_input",
+                     # label ="Select included species data or your own:",
+                     label ="Select Motus daily position modeled:",
+                     choices = c("First position" = "first", "Last position" = "last"),
+                     selected = "last"),
+        div(style = "margin-top: -20px;"),  #reduce space between elements
         radioButtons(inputId = "species_input",
                      # label ="Select included species data or your own:",
                      label ="Select included species:",
@@ -205,10 +212,10 @@ ui <- dashboardPage(
         #show only when wind farm data have been inputted
         condition = "output.fileUploaded",
         h4("4) Select CRM parameter options:", style = "padding-left: 10px; margin-bottom: 0px"),
-        radioButtons("optionradio", "Band (2012) equivalent CRM options:",
+        radioButtons("crm_option_radio", "Band (2012) equivalent CRM options:",
                      c("Option 1: faster approximation" = "1", "Option 3: slower but more precise" = "3")),
         div(style = "margin-top: -20px;"),  #reduce space between elements
-        sliderInput("slider1", label = "Model iterations (rec. min. 1,000)", min = 100, 
+        sliderInput("iter_slider", label = "Model iterations (rec. min. 1,000)", min = 100, 
                     max = 10000, value = 100, step=100, width = '95%'), 
         htmlOutput("iter_message", style = "margin-top: -10px; margin-left: 10px"),
         numericInput(
@@ -228,9 +235,9 @@ ui <- dashboardPage(
         # div(verbatimTextOutput('dirpath', placeholder = T), style = "padding-left: 12px; padding-right: 30px; margin-bottom: 20px; "),
         
         fluidRow(column(6, 
-                        uiOutput("runui")), 
+                        uiOutput("runUI")), 
                  column(6, 
-                        uiOutput("cancel"))),
+                        uiOutput("cancelUI"))),
         br()
       )
   )
@@ -353,7 +360,7 @@ ui <- dashboardPage(
                      solidHeader = TRUE,
                      width = 12,
                      dataTableOutput("count_data"),
-                     htmlOutput("count_notes", style = "margin-top: 0px; margin-left:20px; margin-right:20px; margin-bottom:10px; font-size: 12px")
+                     htmlOutput("popn_notes", style = "margin-top: 0px; margin-left:20px; margin-right:20px; margin-bottom:10px; font-size: 12px")
                    )))
         )
 
@@ -451,52 +458,7 @@ verbose <- F
 ##################################################################################################################################################
 
 server <- function(input, output, session) {
-  # Send results by email
   
-  #  options(
-  #    gargle_oauth_cache = "Gmail_oauth.secret",
-  #    gargle_oauth_email = "collidercrm@gmail.com"
-  #  )
-  
-  #  gm_auth(email = "collidercrm@gmail.com")
-  
-  #  valid_email <- function(x){
-  #    grepl("\\<[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}\\>", as.character(x), ignore.case=TRUE)
-  #  }
-  
-  #  observeEvent({req(!is.null(CRM_fun()$monthCollsnReps_opt1))}, {
-  #    if(input$email == TRUE){
-  #      unlink(paste0(tempdir(),"/CollideR_results.zip"))
-  #      tmpdir = tempdir()
-  #      fnames4zip1 <- list()
-  #      fnames4zip2 <- list()
-  #      #fnames4zip3 <- list()
-  #      for(e in 1:length(CRM_fun()[['CRSpecies']])){
-  #        for(w in 1:length(CRM_fun()[['Turbines']])){
-  #          sindex <- CRM_fun()[['CRSpecies']][e]
-  #          tindex <- paste0("turbModel", CRM_fun()[['Turbines']][w])
-  #          write.csv(CRM_fun()[[as.numeric(input$optionradio)]][[sindex]][[tindex]], file = paste0(tmpdir, "/", sindex, "_", tindex,".csv"), row.names = FALSE)
-  #          write.csv(cbind(CRM_fun()[["sampledParamsTurbine"]][[sindex]][[tindex]],
-  #                          CRM_fun()[["sampledParamsBird"]][[sindex]][[tindex]]), file = paste0(tmpdir, "/", sindex, "_", tindex,"_params.csv"), row.names = FALSE)
-  #          fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/", sindex, "_", tindex,".csv", sep=""))
-  #          fnames4zip2 <- c(fnames4zip2, paste0(tmpdir, "/", sindex, "_", tindex,"_params.csv", sep=""))
-  #          #fnames4zip3 <- c(fnames4zip3, paste0(tmpdir, "/", CRM_fun()[['CRSpecies']][e], "_", paste0("turbModel", CRM_fun()[['Turbines']][w]),"_sensitivity.csv"))
-  #        }}
-  #      zip(zipfile=paste0(tmpdir,"/CollideR_results.zip"), files=unlist(c(fnames4zip1, fnames4zip2)), flags = "-r9Xj")
-  #    }
-  #  })
-  
-  #  suppressWarnings(observeEvent({req(!is.null(CRM_fun()$monthCollsnReps_opt1))}, {
-  #    if(input$email == TRUE){
-  #      validate(need(valid_email(as.character(input$user_email)), "Please enter a valid email"))
-  #      email <- gm_mime(From="collidercrm@gmail.com", To=as.character(input$user_email), Subject="CollideR CRM results") %>%
-  #        gm_html_body("Results of model runs attached.") %>%
-  #        gm_attach_file(paste0(tempdir(), "/CollideR_results.zip"))
-  #        gm_send_message(email)
-  #    }
-  #  })
-  # )
-
   #Set up directory handling for getting output folder for autosaving data below
   #BUT Below only works with local file directories :(
   # dir_roots=c('wd' = '.', 'home', '/home')
@@ -505,13 +467,91 @@ server <- function(input, output, session) {
   # # output$dirpath <- NULL
   # output$dirpath <- renderText({parseDirPath(roots=dir_roots, input$folder)})
   
+  #model type inputs
+  # model_input_react <- reactiveVal()
+  model_input_react <- eventReactive(input$model_input, {as.character(input$model_input)})
+  
+  # input for the model options
+  # crm_option_radio_react <- reactiveVal()
+  crm_option_radio_react <- eventReactive(input$crm_option_radio, {input$crm_option_radio})
+  
   output$fileUploaded  <- reactive({
     val <- !(is.null(input$file_wf_param))
   })
   outputOptions(output, 'fileUploaded', suspendWhenHidden=FALSE)
+
+  # number of iterations
+  # iter_slider_react <- reactiveVal()
+  iter_slider_react <- eventReactive(input$iter_slider, {as.numeric(input$iter_slider)})
+  
+  # approximate the run time for 1 species and 1 turbine; reactive with user input for number of iterations
+  approx_run_times <- c(0.1, 1.2, 0.8, 5.9, 1.9, 3.1)
+  
+  # update estimated run time when user chooses a new option
+  observeEvent(req(input$crm_option_radio), {output$iter_message <- renderText({
+    if((approx_run_times*as.numeric(input$iter_slider))[as.numeric(input$crm_option_radio)] > 90 & (approx_run_times*as.numeric(input$iter_slider))[as.numeric(input$crm_option_radio)] <= 3600){
+      time_estimate <- round((approx_run_times*as.numeric(input$iter_slider))[as.numeric(input$crm_option_radio)]/60)
+      unit_time <- "minutes"
+    }
+    if((approx_run_times*as.numeric(input$iter_slider))[as.numeric(input$crm_option_radio)] > 3600){
+      time_estimate <- round((approx_run_times*as.numeric(input$iter_slider))[as.numeric(input$crm_option_radio)]/3600)
+      unit_time <- "hour(s)"
+    }
+    if((approx_run_times*as.numeric(input$iter_slider))[as.numeric(input$crm_option_radio)] <= 90){
+      time_estimate <- (approx_run_times*as.numeric(input$iter_slider))[as.numeric(input$crm_option_radio)]
+      unit_time <- "seconds"
+    }
+    paste("~", time_estimate, unit_time, "per wind farm/turbine option")
+  })
+  })
+  
+  # load labels to display versions of species names without underscores
+  SpeciesLabels <- read.table("data/SpeciesLabels.csv", sep =",")
+  
+  # Render and remove buttons -----------------------------------------------
+  
+  # if all conditions are met (conditions dependent on whether user is using baked-in species or uploading their own data) 
+  # could simplify using bothdataup()
+  observeEvent(c(input$file_wf_param, input$species_input), {
+    # browser()
+    # render the "run CRM" button to allow user to run main script
+    output$runUI <- renderUI({
+      div(style="display:inline-block; float:right; padding-right: 10px",
+          actionButton("run", "Run CRM", style = "width: 100px; background-color: green; color: white; font-weight: bold;"),
+          id="run_div")
+    })
+    # render cancel button according to conditions for "run CRM"
+    output$cancelUI <- renderUI({
+      div(style="display:inline-block; float:left; padding-left: 10px",
+          actionButton("cancel", "Cancel", style = "width: 100px; background-color: red; color: white; font-weight: bold;"),
+          id="cancel_div")
+    })
+  })
+  
+  # box appears if main function is canceled
+  observeEvent(input$cancel,{
+    if(running())interruptor$interrupt("Canceled")
+  })
+  
+  # if conditions above are no longer met, remove "run CRM" button
+  observeEvent(req((length(input$file_spp_param$datapath) < 3 & length(which(input$species_input == "Other")) == 1 & !is.null(input$file_spp_param))|
+                     length(input$species_input) == 0 | nrow(isolate(windfarm_loc$cell_sf))==0), { 
+                       removeUI(
+                         selector = "#run_div")
+                     })
+  
+  # remove cancel button according to conditions for "run CRM"
+  observeEvent(req((length(input$file_spp_param$datapath) < 3 & length(which(input$species_input=="Other")) == 1 &
+                      !is.null(input$file_spp_param))|length(input$species_input) == 0 | nrow(isolate(windfarm_loc$cell_sf))==0), { 
+                        removeUI(
+                          selector = "#cancel_div")
+                      })
   
   # output$debug=renderPrint(output$fileUploaded)
   
+
+# Start Here tab ----------------------------------------------------------
+
   output$user_instructions <- renderText(
   "<h4>INSTRUCTIONS:</h4>
    <p>1) Enter the project name and person conducting the analysis. This will be saved in output. <br>
@@ -539,73 +579,229 @@ server <- function(input, output, session) {
   
   output$downloads <- renderText("<h4>DOWNLOAD INPUT FILE(S):</h4>")
   
-  # # if send email is selected, render text box for entering email address
-  # observeEvent({req(input$email == TRUE)}, {
-  #   output$user_email_ui <- renderUI({
-  #     textInput("user_email", label=NULL, value = "asdf@emailclient.com",
-  #               width = '75%')
-  #   })
-  # })
 
-  # load labels to display versions of species names without underscores
-  SpeciesLabels <- read.table("data/SpeciesLabels.csv", sep =",")
-  
-  
-  # spp_by_turbines <- reactiveValues()
+# Species data (parameters, flight height, popn data) --------------------
 
+  #navigate to species tab once selected
+  observeEvent(input$species_input, 
+               updateTabItems(session, inputId = "tabsetpan", selected = "species_panel")
+  )
   
-  option_labels <- c("Option 1: faster approximation", NA,"Option 3: slower but more precise")
+  # data for species characteristics
+  # species_params <- reactiveValues()
+  species_params <- eventReactive(c(input$file_spp_param, input$species_input), {
+    if(!is.null(input$file_spp_param)){
+      if(length(which(
+        sapply(1:length(input$file_spp_param$datapath), function(x) length(suppressWarnings(read.table(input$file_spp_param[[x,"datapath"]], header=TRUE, sep = ","))[1,]))
+        ==10))>0){
+        suppressWarnings(read.table(
+          input$file_spp_param[[which(sapply(1:length(input$file_spp_param$datapath), function(y)
+            length(suppressWarnings(read.table(input$file_spp_param[[y,"datapath"]], header=TRUE, sep = ","))[1,]))
+            ==10)[1],"datapath"]], header=TRUE, sep = ","))
+      }else{
+        read.csv("data/BirdData_092022.csv", header = T)
+      }
+    }else{
+      read.csv("data/BirdData_092022.csv", header = T)
+    }
+  })
   
-  # dialog box for sensitivity analyses
-  observeEvent(input$runGSA, {
-    {showModal(modalDialog(
-      title = "Sensitivity analysis ran successfully",
-      footer = modalButton("OK"),
-      paste("Global sensivity analysis for ", option_labels[as.numeric(input$optionradio)], " ran successfully. Results ready to download.", sep="")
-    ))}
+  species_input_react <- eventReactive(c(input$species_input,input$file_spp_param$datapath), {
+    if(length(which(input$species_input=="Other"))==0){
+      input$species_input
+    }else{
+      suppressWarnings(read.table(input$file_spp_param[[which(
+        sapply(1:length(input$file_spp_param$datapath), function(x) length(suppressWarnings(read.table(input$file_spp_param[[x,"datapath"]], header=TRUE, sep = ","))[1,]))
+        == 10)[1],"datapath"]], header=TRUE, sep = ","))[,1]
+    }
+  })  
+
+  output$species_data <-
+    DT::renderDataTable({
+      if(!is.null(input$file_spp_param)){
+        #load only first row of data
+        bird_data <- read.csv(input$file_spp_param$datapath, header = T)[1,]
+        species_data_row <- as.data.frame(t(bird_data[which(bird_data$Species==input$species_input), ]))
+        colnames(species_data_row) <- sub("_", " ", species_data_row[1,])
+      }else{
+        bird_data <- read.csv("data/BirdData_092022.csv", header = T)
+        # species_data_row <- reshape2::melt(as.data.table(bird_data[which(bird_data$Species==input$species_input), ]), id.var=NULL)
+        species_params_defs <- c("Parameter definitions",
+                                 "Mean Proportion of birds that avoid turbines", 
+                                 "Standard deviation of the avoidance rate",
+                                 "Mean body length of the target species (m)",
+                                 "Standard deviation of the species body length (m)",
+                                 "Mean species wingspan length (m)",
+                                 "Standard deviation of the species wingspan length (m)",
+                                 "Mean species flight speed (m/s)",
+                                 "Standard deviation of the species flight speed (m/s)",
+                                 "Flight type, either flapping or gliding")
+        species_data_row <- as.data.frame(cbind(species_params_defs ,t(bird_data[which(bird_data$Species==input$species_input), ])))
+        colnames(species_data_row) <- sub("_", " ", species_data_row[1,])
+      }
+      return(species_data_row[-1, , drop = FALSE])
+    },
+    # species_params(),
+    # selection = list(mode = "single", selected = 1),
+    options = list(dom = 't', 
+                   paging = FALSE,
+                   bSort=FALSE,
+                   scrollY = "500px",
+                   searching = FALSE))
+
+# Species flight height data ----------------------------------------------
+
+  # flight height distributions
+  # spp_flt_ht_react <- reactiveValues()
+  spp_flt_ht_react <- eventReactive(c(input$file_spp_param, input$species_input), {
+    if(!is.null(input$file_spp_param)){
+      if(length(which(
+        sapply(1:length(input$file_spp_param$datapath), function(x) length(suppressWarnings(read.table(input$file_spp_param[[x,"datapath"]], header=TRUE, sep = ","))[1,]))
+        ==1002))>0){
+        lapply(1:length(which(
+          sapply(1:length(input$file_spp_param$datapath),
+                 function(x) length(suppressWarnings(read.table(input$file_spp_param[[x,"datapath"]], header=TRUE, sep = ","))[1,]))
+          == 1002)),
+          function(x) suppressWarnings(read.table(input$file_spp_param[[which(
+            sapply(1:length(input$file_spp_param$datapath), function(x) length(suppressWarnings(read.table(input$file_spp_param[[x,"datapath"]], header=TRUE, sep = ","))[1,]))
+            ==1002)[x], "datapath"]], header=TRUE, sep = ","))
+        )
+      }else{
+        lapply(1:length(species_input_react()), function(x) read.csv(paste("data/", species_input_react()[x],"_ht_dflt.csv", sep=''), header = T))
+      }
+    }else{
+      lapply(1:length(species_input_react()), function(x) read.csv(paste("data/", species_input_react()[x],"_ht_dflt.csv", sep=''), header = T))
+    }
+  })
+  
+  #Summary table of flight height data for plotting and tables
+  #  Created these for default/included data to speed up process, and otherwise summarize loaded flight height data
+  flt_ht_summary_react <- eventReactive(c(input$file_spp_param, input$species_input), {
+    if(!is.null(input$file_spp_param)){
+      flt_ht_boot_table <- spp_flt_ht_react()[[1]]
+      n_cols <- ncol(flt_ht_boot_table)
+      #summarize across all boot samples
+      flt_ht_summary <- flt_ht_boot_table %>%
+        dplyr::group_by(Height_m) %>%
+        dplyr::rowwise() %>%
+        dplyr::summarise(mean_prop = mean(c_across(3:n_cols-1)), min_prop = min(c_across(3:n_cols-1)), max_prop = max(c_across(3:n_cols-1)))
+    } else {
+      #return  pre-rendered flt height summaries depending on species
+      load(file=paste0("data/", input$species_input, "_ht_dflt_summary.RData"))
+    }
+    return(flt_ht_summary)
   })
 
-  # mute more complex option selection to instead limit options to one best and one fast
-  # update the radio button selection based on whether a flight height distribution is available
-  #observeEvent(input$FHD, {
-  #  if(input$FHD == TRUE){
-  #    updateRadioButtons(session, "optionradio",
-  #                       label = "Collision risk model",
-  #                       choiceNames = c("Approximated", "Individual-based"),
-  #                       choiceValues = c(3, 6))
-  #  }
-  #  if(input$FHD == FALSE){
-  #    updateRadioButtons(session, "optionradio",
-  #                       label = "Collision risk model",
-  #                       choiceNames = c("Basic", "Approximated", "Individual-based"),
-  #                       choiceValues = c(1, 2, 5))
-  #  }
-  #})
-
-  # approximate the run time for 1 species and 1 turbine; reactive with user input for number of iterations
-  times <- c(0.1, 1.2, 0.8, 5.9, 1.9, 3.1)
-
-  # load scripts for the main collision risk computation and the global sensitivity analyses
-  source("BandModel_function_cf.R")
-  source("scripts/GSA.R")
-
-
-  # an object that indexes whether at least one file has been uploaded for both species and turbine data
-  bothdataup <- reactiveVal()
-  bothdataup  <- eventReactive(c(input$"file_spp_param", input$"file_wf_param"), {length(input$file_spp_param$datapath) > 0&length(input$file_wf_param$datapath) > 0})
-  # number of iterations
-  sliderreact <- reactiveVal()
-  sliderreact <- eventReactive(input$slider1, {as.numeric(input$slider1)})
-  # input for the model options
-  radioreact <- reactiveVal()
-  radioreact <- eventReactive(input$optionradio, {input$optionradio})
-  # turbine data
-  tablereact <- reactiveValues()
-  tablereact <- eventReactive(input$file_wf_param, {
-    suppressWarnings(read.table(input$file_wf_param$datapath, header=TRUE, sep = ","))
-    })
+  #output table showing the min, max, mean flight heights from the bootstrap tables
+  output$flt_ht_data <-
+      DT::renderDataTable(
+      datatable(
+        flt_ht_summary_react() %>% 
+          filter(Height_m >= input$slider_flt_ht[1] & Height_m <= input$slider_flt_ht[2]),
+        selection = list(mode = "single", selected = 1),
+        options = list(
+          paging = FALSE,
+          scrollY = "500px",
+          searching = FALSE
+        )))
   
-  wind_farm_df <- reactiveValues()
+  # observe(print(input$slider_flt_ht[1]))
+  #flight height data plot
+  output$flt_ht_plot <- renderPlot({
+    ggplot(flt_ht_summary_react()) +
+      geom_pointrange(aes(x = Height_m, y = mean_prop, ymin = min_prop, ymax = max_prop)) +
+      geom_point(aes(x = Height_m, y = mean_prop), col = "red") +
+      xlim(input$slider_flt_ht[1], input$slider_flt_ht[2]) +
+      xlab("Flight height (m)") +
+      ylab("Proportion") +
+      coord_flip() +
+      theme_bw()
+
+  })
+
+
+# Species population data -------------------------------------------
+
+  # count data
+  # popn_data_react <- reactiveValues()
+  popn_data_react <- eventReactive(c(input$file_spp_param, input$species_input), {
+    if(!is.null(input$file_spp_param)){
+      if(length(which(
+        sapply(1:length(input$file_spp_param$datapath), function(x) length(suppressWarnings(read.table(input$file_spp_param[[x,"datapath"]], header=TRUE, sep = ","))[1,]))
+        ==25))>0){
+        suppressWarnings(read.table(
+          input$file_spp_param[[which(
+            sapply(1:length(input$file_spp_param$datapath), function(y) length(suppressWarnings(read.table(input$file_spp_param[[y,"datapath"]], header=TRUE, sep = ","))[1,]))
+            ==25)[1],"datapath"]], header=TRUE, sep = ","))
+      }else{
+        read.csv("data/CountData_USFWS_20220919.csv", header = T)
+      }
+    }else{
+      read.csv("data/CountData_USFWS_20220919.csv", header = T)
+    }
+  })
+  
+  #output of the population data for species baked into SCRAM
+  output$count_data <-
+    DT::renderDataTable({
+      count_tbl <- popn_data_react()[which(popn_data_react()$Species==isolate(input$species_input)), ] %>%
+        dplyr::select(-Species)
+      return(count_tbl)},
+      options = list(dom = 't', 
+                     paging = FALSE,
+                     bSort=FALSE, 
+                     scrollX = TRUE
+                     ),
+      rownames= FALSE
+    )
+  
+  #Notes about assumptions and limitations for the three species for which population info is provided.
+  spp_popn_notes <- reactive({
+    Species <- input$species_input
+    if (Species=="Piping_Plover"){
+      return(c("Entire Atlantic coast population could be present in area during months listed.",
+      "Occurrence through October to include birds stopping over in mid-Atlantic (e.g. North Carolina). Number of birds still present in Atlantic likely lower.",     
+      "Estimate of HY fledges, uses the 20-year (2002 - 2021) average productivity (unweighted)."))
+    }
+    else if (Species=="Red_Knot"){
+      return(c("All pass through in spring - #s consistent w/Lyons et al super-population estimate for 2020 in DE Bay: 40,444 (95 perc. credible interval: 33,627–49,966).",
+    "Winter population estimates represent the total # of adults and sub-adults (in general).",
+    "Southern and northern wintering birds could be present during July - Sept.",
+    "Only northern wintering birds could be present during Oct - Nov.",
+    "Only southeast US and Caribbean birds could be present during Dec.",
+    "Birds from western Gulf population are excluded from totals in Atlantic region due to lack of information on extent to which they use the Atlantic region.",
+    "Numbers do not include HY birds in fall.",
+    "Dec number coming from Lyons et al 2017. Just includes SE US Birds, not Caribbean.",
+    "Issues with double counting addressed because birds may be present in different areas of Atlantic region for weeks to months."))
+    }
+    else if (Species=="Roseate_Tern"){
+      return(c("Entire NW Atlantic pop could be present in area during months listed.",
+    "Average of most recent (2018 and 2019) productivity data from three largest colonies (representing >90 perc. of population) representative of entire population.",
+    "Fledging and post-breeding dispersal period occurs from July through Sept.",
+    "Numbers of non-breeding adults are not included.",
+    "Does not include non-breeding 1 and 2 year old birds that return but do not breed.",
+    "From Gochfeld and Burger (2020): Northeastern birds first arrive at Nantucket and Martha's Vineyard, MA, in large flocks, then disperse north as well as west. They arrive 26 Apr-20 May at Bird I., MA (Nisbet 1980, Nisbet 1981b, Nisbet 1989b), slightly later at Falkner I., CT, and Great Gull I., NY.",
+    "From Gochfeld and Burger (2020): Apparently all birds migrate directly from the staging area around Cape Cod across the w. North Atlantic to the West Indies (Nisbet 1984, C. Mostello). Very small numbers occur at sea off N. Carolina from late Aug to late Sep, with a peak in early Sep; the latest date was 28 Oct (D. Lee)."))
+    } else {return("")} 
+    
+  })
+  
+  #create count notes for rendering.
+  output$popn_notes <- renderText(
+    c("<h5>Population data assumptions/limitations:</h5>",
+    paste0(1:length(spp_popn_notes()),") ", spp_popn_notes(), " <br>"))
+  )
+  
+
+# Wind farm data ----------------------------------------------------------
+
+  observeEvent(input$file_wf_param, {
+    Sys.sleep(2)  #wait until species data has rendered and then switch also helps with pre-rendering maps, etc.
+    updateTabItems(session, inputId = "tabsetpan", selected = "wind_farm_panel")})
+  
+  load(file = file.path(data_dir, "BOEM_halfdeg_grid_sf.RData"))
+  
+  # wind_farm_df <- reactiveValues()
   wind_farm_df <- eventReactive(input$file_wf_param, {
     infile <- input$file_wf_param
     if (is.null(infile)) {
@@ -613,15 +809,58 @@ server <- function(input, output, session) {
     }
     suppressWarnings(read.csv(infile$datapath, header=TRUE))
   })
-
-  observeEvent(input$file_wf_param, {
-    Sys.sleep(2)  #wait until species data has rendered and then switch also helps with pre-rendering maps, etc.
-    updateTabItems(session, inputId = "tabsetpan", selected = "wind_farm_panel")})
+  
+  #reactive value to hold the selected grid cell for calculating
+  windfarm_loc <- reactiveValues(cell_sf = NULL)
+  # windfarm_loc_cell <- NULL
+  
+  #perform lat/long checks prior to creating spatial data and create a spatial sf object holding the wind farm location and data
+  observeEvent(wind_farm_df(), {
+    
+    if(length(which(colnames(isolate(wind_farm_df()))=="Latitude")) > 0 & length(which(colnames(isolate(wind_farm_df())) == "Longitude")) > 0){
+      # browser()
+      windfarm_lats <- isolate(wind_farm_df())[,c("Latitude", "Longitude")]
+      #check to see if multiple lat/long value pairs for inputs - not allowed in this version
+      if(nrow(windfarm_lats) >= 1){
+        if(nrow(unique(windfarm_lats)) >= 2){
+          showModal(modalDialog(
+            title = "Check values for Latitude and Longitude",
+            footer = modalButton("OK"),
+            paste("Latitude and/or Longitude are not the same in the different wind farm option parameters.
+              Only one location is allowed per model run.
+              Please upload wind farm options for the same location.")
+          ))
+        } else {
+          loc_sf <- sf::st_as_sf(isolate(wind_farm_df())[1,], coords=c("Longitude", "Latitude" ), crs = sf::st_crs(4326))
+          # CF'original cell match code, which is confusing at best, replaced with spatial functions
+          # Gets cell values from lat/longs provided to provide info on low confidence areas as well as grid cell area in sq. km 
+          #intersect with the model grid polygon
+          windfarm_loc$cell_sf <- BOEM_halfdeg_grid_sf[unlist(sf::st_intersects(loc_sf, BOEM_halfdeg_grid_sf)), ]
+          
+          if(nrow(windfarm_loc$cell_sf)==0){
+            showModal(modalDialog(
+              title = "Check values for Latitude and Longitude",
+              footer = modalButton("OK"),
+              paste("Latitude and/or Longitude values fall outside the geographic extent of this tool.
+              Please upload appropriate values with wind farm data or consult documentation for more information on geographic scope.")
+            ))
+          } 
+        } 
+      } 
+    } else {  #missing lat or long fields
+      showModal(modalDialog(
+        title = "Check wind farm data for Latitude and Longitude",
+        footer = modalButton("OK"),
+        paste("Latitude and/or Longitude are missing.
+              Please upload appropriate values with wind farm data.")
+      ))
+    }
+  })
 
   #render the wind farm data to the tables on the wind farm data tab
   output$wind_farm_data1 <- DT::renderDataTable({
     wf_t <- wind_farm_df() %>%
-        dplyr::select(-contains("Op"))
+      dplyr::select(-contains("Op"))
     wf_t <- as.data.frame(t(wf_t))
     colnames(wf_t) <- paste("Run", wf_t[1, ])
     #add parameter defs
@@ -644,15 +883,18 @@ server <- function(input, output, session) {
                          "Longitude (decimal degrees)")
     wf_t <- cbind("Parameter definitions"=wf1_params_defs, wf_t)
     return(wf_t[-1,, drop = FALSE])
-    },
-    options = list(
-      dom = 't',
-      paging = FALSE,
-      bSort=FALSE
-    ))
+  },
+  options = list(
+    dom = 't',
+    paging = FALSE,
+    bSort=FALSE
+  ))
+  # wind farm parameters
+  # wind_farm_params_react <- reactiveValues()
+  wind_farm_params_react <- eventReactive(input$file_wf_param, {
+    suppressWarnings(read.table(input$file_wf_param$datapath, header=TRUE, sep = ","))
+  })
   
-  # windfarm_loc <- observe(st_as_sf(wind_farm_df()[1,], coords=c("Latitude", "Longitude")))
-
   #show the Wind Farm operational data as as table for QA/QC
   output$ops_data <-
     DT::renderDataTable({
@@ -662,8 +904,8 @@ server <- function(input, output, session) {
       colnames(ops_data) <- paste("Run", ops_data[1, ])
       #add parameter defs
       op_defs <- c("defs", (rep(c("Wind availability (maximum amount of time turbines can be operational/month).",
-                   "Mean time that turbines will not be operational (“down time”)", 
-                   "Standard deviation of mean operational time"),12)))
+                                  "Mean time that turbines will not be operational (“down time”)", 
+                                  "Standard deviation of mean operational time"),12)))
       ops_data <- cbind("Parameter definitions"=op_defs, ops_data)
       return(ops_data[-1, , drop = FALSE])},
       options = list(dom = 't', 
@@ -682,21 +924,29 @@ server <- function(input, output, session) {
   
   #add appropriate species model output to map in leaflet when species chosen
   #create the color palette functions for coloring
-  spp_move_data <- reactiveVal()
-  spp_move_data <- eventReactive(input$species_input, {
+  # spp_move_data <- reactiveVal()
+  spp_move_data <- eventReactive(c(input$species_input,input$model_input), {
     species <- isolate(input$species_input)
-    get(paste0(species, "_monthly_prob_BOEM_half_deg_trunc"))
+    model_type <- isolate(input$model_input)
+    if(isolate(input$model_input)=="first"){
+      get(paste0(species, "_monthly_prob_BOEM_half_deg_trunc"))
+    } else {
+      get(paste0(species, "_monthly_prob_BOEM_half_deg_last"))
+    }
+    
   })
-  meanpal <- reactiveVal()
-  meanpal <- eventReactive(input$species_input, {
+  
+  # meanpal <- reactiveVal()
+  meanpal <- eventReactive(c(input$species_input,input$model_input), {
     #issue with zero inflated bins - need to generate non-zero quants
     #changed from using cumulative daily to mean monthly (non-culative daily) occupancy
     non_zero_mean <- spp_move_data()$mean_daily_allmonths[spp_move_data()$mean_daily_allmonths>0]
     mean_bins <- c(0, quantile(non_zero_mean, probs=seq(0,1,1/7)))
     colorBin("YlOrRd", spp_move_data()$mean_daily_allmonths, bins = mean_bins)
   })
-  CIpal <- reactiveVal()
-  CIpal <- eventReactive(input$species_input, {
+  
+  # CIpal <- reactiveVal()
+  CIpal <- eventReactive(c(input$species_input,input$model_input), {
     #issue with zero inflated bins - need to generate non-zero quants
     non_zero_CIrange <- spp_move_data()$mean_CI_range_daily_allmonths[spp_move_data()$mean_CI_range_daily_allmonths>0]
     CI_bins <- c(0, quantile(non_zero_CIrange, probs=seq(0,1,1/7)))
@@ -770,392 +1020,15 @@ server <- function(input, output, session) {
         position = "topright", #"topleft",
         options = layersControlOptions(collapsed = TRUE)
       ) #%>% 
-      #hideGroup("CI range")
-  })
-
-  # data for species characteristics
-  tablereact3 <- reactiveValues()
-  tablereact3 <- eventReactive(c(input$file_spp_param, input$species_input), {
-    if(!is.null(input$file_spp_param)){
-      if(length(which(
-        sapply(1:length(input$file_spp_param$datapath), function(x) length(suppressWarnings(read.table(input$file_spp_param[[x,"datapath"]], header=TRUE, sep = ","))[1,]))
-        ==10))>0){
-        suppressWarnings(read.table(
-          input$file_spp_param[[which(sapply(1:length(input$file_spp_param$datapath), function(y)
-            length(suppressWarnings(read.table(input$file_spp_param[[y,"datapath"]], header=TRUE, sep = ","))[1,]))
-            ==10)[1],"datapath"]], header=TRUE, sep = ","))
-      }else{
-        read.csv("data/BirdData_092022.csv", header = T)
-      }
-    }else{
-      read.csv("data/BirdData_092022.csv", header = T)
-    }
+    #hideGroup("CI range")
   })
   
-  #navigate to species tab once selected
-  observeEvent(input$species_input, 
-               updateTabItems(session, inputId = "tabsetpan", selected = "species_panel")
-               )
   
-  # species_data_react <- eventReactive(c(input$file_spp_param, input$species_input), {
-  #   if(!is.null(input$file_spp_param)){
-  #   }else{
-  #     bird_data <- read.csv("data/BirdData_092022.csv", header = T)
-  #     # species_data_row <- reshape2::melt(as.data.table(bird_data[which(bird_data$Species==input$species_input), ]), id.var=NULL)
-  #     species_data_row <- as.data.frame(t(bird_data[which(bird_data$Species==input$species_input), ]))
-  #     
-  #     # colnames(species_data_row) <- c("values")
-  #   }
-  #   return(species_data_row)
-  # })
-  # create reactive objects to be used in the main risk computation script, with the ability to update with user inputs
-  # species input
-  # speciesreact <- reactiveValues()
-  speciesreact <- eventReactive(c(input$species_input,input$file_spp_param$datapath), {
-    if(length(which(input$species_input=="Other"))==0){
-      input$species_input
-    }else{
-      suppressWarnings(read.table(input$file_spp_param[[which(
-        sapply(1:length(input$file_spp_param$datapath), function(x) length(suppressWarnings(read.table(input$file_spp_param[[x,"datapath"]], header=TRUE, sep = ","))[1,]))
-        == 10)[1],"datapath"]], header=TRUE, sep = ","))[,1]
-    }
-  })  
-    
-  output$species_data <-
-    DT::renderDataTable({
-      if(!is.null(input$file_spp_param)){
-        #load only first row of data
-        bird_data <- read.csv(input$file_spp_param$datapath, header = T)[1,]
-        species_data_row <- as.data.frame(t(bird_data[which(bird_data$Species==input$species_input), ]))
-        colnames(species_data_row) <- sub("_", " ", species_data_row[1,])
-      }else{
-        bird_data <- read.csv("data/BirdData_092022.csv", header = T)
-        # species_data_row <- reshape2::melt(as.data.table(bird_data[which(bird_data$Species==input$species_input), ]), id.var=NULL)
-        species_params_defs <- c("Parameter definitions",
-                                 "Mean Proportion of birds that avoid turbines", 
-                                 "Standard deviation of the avoidance rate",
-                                 "Mean body length of the target species (m)",
-                                 "Standard deviation of the species body length (m)",
-                                 "Mean species wingspan length (m)",
-                                 "Standard deviation of the species wingspan length (m)",
-                                 "Mean species flight speed (m/s)",
-                                 "Standard deviation of the species flight speed (m/s)",
-                                 "Flight type, either flapping or gliding")
-        species_data_row <- as.data.frame(cbind(species_params_defs ,t(bird_data[which(bird_data$Species==input$species_input), ])))
-        colnames(species_data_row) <- sub("_", " ", species_data_row[1,])
-      }
-      return(species_data_row[-1, , drop = FALSE])
-    },
-    # tablereact3(),
-    # selection = list(mode = "single", selected = 1),
-    options = list(dom = 't', 
-                   paging = FALSE,
-                   bSort=FALSE,
-                   scrollY = "500px",
-                   searching = FALSE
-    )
-    )
+# Additional data checks prior to running SCRAM --------------------------------------
   
-  # flight height distributions
-  tablereact5 <- reactiveValues()
-  tablereact5 <- eventReactive(c(input$file_spp_param, input$species_input), {
-    if(!is.null(input$file_spp_param)){
-      if(length(which(
-        sapply(1:length(input$file_spp_param$datapath), function(x) length(suppressWarnings(read.table(input$file_spp_param[[x,"datapath"]], header=TRUE, sep = ","))[1,]))
-        ==1002))>0){
-        lapply(1:length(which(
-          sapply(1:length(input$file_spp_param$datapath),
-                 function(x) length(suppressWarnings(read.table(input$file_spp_param[[x,"datapath"]], header=TRUE, sep = ","))[1,]))
-          == 1002)),
-          function(x) suppressWarnings(read.table(input$file_spp_param[[which(
-            sapply(1:length(input$file_spp_param$datapath), function(x) length(suppressWarnings(read.table(input$file_spp_param[[x,"datapath"]], header=TRUE, sep = ","))[1,]))
-            ==1002)[x], "datapath"]], header=TRUE, sep = ","))
-        )
-      }else{
-        lapply(1:length(speciesreact()), function(x) read.csv(paste("data/", speciesreact()[x],"_ht_dflt.csv", sep=''), header = T))
-      }
-    }else{
-      lapply(1:length(speciesreact()), function(x) read.csv(paste("data/", speciesreact()[x],"_ht_dflt.csv", sep=''), header = T))
-    }
-  })
-  
-  #Summary table of flight height data for plotting and tables
-  #  Created these for default/included data to speed up process, and otherwise summarize loaded flight height data
-  flt_ht_data_react <- eventReactive(c(input$file_spp_param, input$species_input), {
-    if(!is.null(input$file_spp_param)){
-      flt_ht_boot_table <- tablereact5()[[1]]
-      n_cols <- ncol(flt_ht_boot_table)
-      #summarize across all boot samples
-      flt_ht_summary <- flt_ht_boot_table %>%
-        dplyr::group_by(Height_m) %>%
-        dplyr::rowwise() %>%
-        dplyr::summarise(mean_prop = mean(c_across(3:n_cols-1)), min_prop = min(c_across(3:n_cols-1)), max_prop = max(c_across(3:n_cols-1)))
-    } else {
-      #return  pre-rendered flt height summaries depending on species
-      load(file=paste0("data/", input$species_input, "_ht_dflt_summary.RData"))
-    }
-    return(flt_ht_summary)
-  })
-
-  #output table showing the min, max, mean flight heights from the bootstrap tables
-  output$flt_ht_data <-
-      DT::renderDataTable(
-      datatable(
-        flt_ht_data_react() %>% 
-          filter(Height_m >= input$slider_flt_ht[1] & Height_m <= input$slider_flt_ht[2]),
-        selection = list(mode = "single", selected = 1),
-        options = list(
-          paging = FALSE,
-          scrollY = "500px",
-          searching = FALSE
-        )
-      )
-    )
-  # observe(print(input$slider_flt_ht[1]))
-  #flight height data plot
-  output$flt_ht_plot <- renderPlot({
-    ggplot(flt_ht_data_react()) +
-      geom_pointrange(aes(x = Height_m, y = mean_prop, ymin = min_prop, ymax = max_prop)) +
-      geom_point(aes(x = Height_m, y = mean_prop), col = "red") +
-      xlim(input$slider_flt_ht[1], input$slider_flt_ht[2]) +
-      xlab("Flight height (m)") +
-      ylab("Proportion") +
-      coord_flip() +
-      theme_bw()
-
-  })
-
-  # count data
-  tablereact7 <- reactiveValues()
-  tablereact7 <- eventReactive(c(input$file_spp_param, input$species_input), {
-    if(!is.null(input$file_spp_param)){
-      if(length(which(
-        sapply(1:length(input$file_spp_param$datapath), function(x) length(suppressWarnings(read.table(input$file_spp_param[[x,"datapath"]], header=TRUE, sep = ","))[1,]))
-        ==25))>0){
-        suppressWarnings(read.table(
-          input$file_spp_param[[which(
-            sapply(1:length(input$file_spp_param$datapath), function(y) length(suppressWarnings(read.table(input$file_spp_param[[y,"datapath"]], header=TRUE, sep = ","))[1,]))
-            ==25)[1],"datapath"]], header=TRUE, sep = ","))
-      }else{
-        read.csv("data/CountData_USFWS_20220919.csv", header = T)
-      }
-    }else{
-      read.csv("data/CountData_USFWS_20220919.csv", header = T)
-    }
-  })
-  
-  #output of the population data for species baked into SCRAM
-  output$count_data <-
-    DT::renderDataTable({
-      count_tbl <- tablereact7()[which(tablereact7()$Species==isolate(input$species_input)), ] %>%
-        dplyr::select(-Species)
-      return(count_tbl)},
-      options = list(dom = 't', 
-                     paging = FALSE,
-                     bSort=FALSE, 
-                     scrollX = TRUE
-                     ),
-      rownames= FALSE
-    )
-  
-  #Notes about assumptions and limitations for the three species for which population info is provided.
-  spp_count_notes <- reactive({
-    Species <- input$species_input
-    if (Species=="Piping_Plover"){
-      return(c("Entire Atlantic coast population could be present in area during months listed.",
-      "Occurrence through October to include birds stopping over in mid-Atlantic (e.g. North Carolina). Number of birds still present in Atlantic likely lower.",     
-      "Estimate of HY fledges, uses the 20-year (2002 - 2021) average productivity (unweighted)."))
-    }
-    else if (Species=="Red_Knot"){
-      return(c("All pass through in spring - #s consistent w/Lyons et al super-population estimate for 2020 in DE Bay: 40,444 (95 perc. credible interval: 33,627–49,966).",
-    "Winter population estimates represent the total # of adults and sub-adults (in general).",
-    "Southern and northern wintering birds could be present during July - Sept.",
-    "Only northern wintering birds could be present during Oct - Nov.",
-    "Only southeast US and Caribbean birds could be present during Dec.",
-    "Birds from western Gulf population are excluded from totals in Atlantic region due to lack of information on extent to which they use the Atlantic region.",
-    "Numbers do not include HY birds in fall.",
-    "Dec number coming from Lyons et al 2017. Just includes SE US Birds, not Caribbean.",
-    "Issues with double counting addressed because birds may be present in different areas of Atlantic region for weeks to months."))
-    }
-    else if (Species=="Roseate_Tern"){
-      return(c("Entire NW Atlantic pop could be present in area during months listed.",
-    "Average of most recent (2018 and 2019) productivity data from three largest colonies (representing >90 perc. of population) representative of entire population.",
-    "Fledging and post-breeding dispersal period occurs from July through Sept.",
-    "Numbers of non-breeding adults are not included.",
-    "Does not include non-breeding 1 and 2 year old birds that return but do not breed.",
-    "From Gochfeld and Burger (2020): Northeastern birds first arrive at Nantucket and Martha's Vineyard, MA, in large flocks, then disperse north as well as west. They arrive 26 Apr-20 May at Bird I., MA (Nisbet 1980, Nisbet 1981b, Nisbet 1989b), slightly later at Falkner I., CT, and Great Gull I., NY.",
-    "From Gochfeld and Burger (2020): Apparently all birds migrate directly from the staging area around Cape Cod across the w. North Atlantic to the West Indies (Nisbet 1984, C. Mostello). Very small numbers occur at sea off N. Carolina from late Aug to late Sep, with a peak in early Sep; the latest date was 28 Oct (D. Lee)."))
-    } else {return("")} 
-    
-  })
-  
-  #create count notes for rendering.
-  output$count_notes <- renderText(
-    c("<h5>Population data assumptions/limitations:</h5>",
-    paste0(1:length(spp_count_notes()),") ", spp_count_notes(), " <br>"))
-  )
-  
-  # movement data
-  # option for user-provided movement files disabled to simplify input
-  tablereact9 <- reactiveValues()
-  tablereact9 <- eventReactive(c(input$species_input), {
-    #tablereact9 <- eventReactive(c(input$file_spp_param, input$species_input), {
-    #  if(!is.null(input$file_spp_param)){
-    #    if(length(which(
-    #      sapply(1:length(input$file_spp_param$datapath), function(x) length(suppressWarnings(read.table(input$file_spp_param[[x,"datapath"]], header=TRUE, sep = ","))[1,]))
-    #      ==13))>0){
-    #      lapply(1:length(which(
-    #        sapply(1:length(input$file_spp_param$datapath), function(x) length(suppressWarnings(read.table(input$file_spp_param[[x,"datapath"]], header=TRUE, sep = ","))[1,]))
-    #        ==13)),
-    #        function(x) suppressWarnings(read.table(
-    #          input$file_spp_param[[which(sapply(1:length(input$file_spp_param$datapath),
-    #                                    function(x) length(suppressWarnings(read.table(input$file_spp_param[[x,"datapath"]], header=TRUE, sep = ","))[1,]))
-    #                             ==13)[x], "datapath"]], header=TRUE, sep = ","))
-    #      )
-    #    }else{
-    #      lapply(1:length(speciesreact()), function(x) read.csv(paste("data/MovementData_", speciesreact()[x],".csv", sep=''), header = T))
-    #    }
-    #  }else{
-    lapply(1:length(speciesreact()), function(x) read.csv(paste("data/MovementData_", speciesreact()[x],".csv", sep=''), header = T))
-    #  }
-  })
-
-  # indicator to let app know whether to use user-provided passage rate data (1) or built-in movement data (0)
-  tablereact11 <- reactiveValues()
-  tablereact11 <- eventReactive(c(input$file_spp_param, input$file_wf_param), {
-    if(!is.null(input$file_spp_param)){
-      if(length(which(
-        sapply(1:length(input$file_spp_param$datapath), function(x) length(suppressWarnings(read.table(input$file_spp_param[[x,"datapath"]], header=TRUE, sep = ","))[1,]))
-        ==25))>0){1}else{0}
-    }else{0}
-  })
-
-  ### this block deals with making it possible to warn the user that their specified location is in a low confidence area
-  movement_type <- reactiveValues()
-  movement_type <- eventReactive(c(input$file_wf_param, input$file_spp_param), {
-    cell_match <- read.csv("data/BOEM_XY_species_halfdeg.csv", header = T)
-    turb_tab <- suppressWarnings(read.table(input$file_wf_param$datapath, header=TRUE, sep = ","))
-    loc_match <- mat.or.vec(length(turb_tab[ ,1]) + 2, 1)
-    # mute the following block when not accepting user-provided movement data
-    #if statement to fill in first position
-    #if(!is.null(input$file_spp_param)){
-    #  if(length(which(
-    #    sapply(1:length(input$file_spp_param$datapath), function(x) length(suppressWarnings(read.table(input$file_spp_param[[x,"datapath"]], header=TRUE, sep = ","))[1,]))
-    #    ==13))>0){
-    #    loc_match[1] <- 0
-    # }else{
-    #    loc_match[1] <- 1
-    #  }
-    #}else{
-    loc_match[1] <- 1
-    #}
-    #if(!is.null(react_latlon()[1])){
-    #distance matching to cell in movement data for exctracting data from that cell
-    if(react_latlon()[1] != -9){
-      loc_match_dists <- lapply(1:length(cell_match[ ,'lat']), function(x) sqrt((cell_match[x ,'lat'] -
-                                                                                   turb_tab[1, "Latitude"])^2 +
-                                                                                  (cell_match[x ,'lon'] - turb_tab[1, "Longitude"])^2))
-      #loc_match[2] appears to apply to the FID column which starts with 0
-      loc_match[2] <- which(unlist(loc_match_dists) == min(unlist(loc_match_dists)))[1]
-      loc_match[3] <- cell_match[which(unlist(loc_match_dists) == min(unlist(loc_match_dists)))[1],'area']
-    }
-    loc_match
-  })
-
-
-  # create a vector that stores values for lat and lon to use for identifying the location of simulated wind farm
-  # and can indicate whether there are appropriate values for lat/lon
-  react_latlon <- reactiveValues()
-  react_latlon <- NULL
-  react_latlon <- eventReactive(input$file_wf_param, {
-    temp_tab <-  suppressWarnings(read.table(input$file_wf_param$datapath, header=TRUE, sep = ","))
-    if(length(which(colnames(temp_tab)=="Latitude")) > 0&length(which(colnames(temp_tab) == "Longitude")) > 0){
-      temp_lats <- temp_tab[,c("Latitude", "Longitude")]
-      #check to see if multiple lat/long value pairs for inputs - not allowed in this version
-      if(nrow(temp_lats)>1){
-        if(nrow(unique(temp_lats)) > 1){
-          # showModal(modalDialog(
-          #   title = "Check values for Latitude and Longitude",
-          #   footer = modalButton("OK"),
-          #   paste("Latitude and/or Longitude are not the same in the different turbine option parameters.
-          #     Please upload appropriate values with turbine data.")
-          # ))
-          temp_lat <- c(-9, -9)
-        } else {
-          temp_lat <- c(temp_tab[1, "Latitude"], temp_tab[1, "Longitude"])
-          
-        }
-      } else {
-        temp_lat <- c(temp_tab[1, "Latitude"], temp_tab[1, "Longitude"])
-      }
-      
-    } else {
-      temp_lat <- c(-9, -9)
-    }
-    
-    if(length(which(temp_lat[1] > 45)) < 1&
-       length(which(temp_lat[1] < 23)) < 1&
-       length(which(temp_lat[2] > (-63))) < 1&
-       length(which(temp_lat[2] < (-83))) < 1&
-       temp_lat[1] != -9
-    ){
-      lat_check <- 1
-    }else {
-      lat_check <- 0
-
-    }
-    c(temp_lat, lat_check)
-  })
-  
-  # matrix that can serve as an indicator for whether each selected species is in a low confidence area
-  within_conf <- reactiveValues()
-  within_conf <- eventReactive(req(!is.null(input$file_wf_param)&length(which(input$species_input!="Other"))>0&length(which(input$species_input=="Other"))==0), {
-    #if(!is.null(react_latlon())){
-    if(react_latlon()[1] != -9){
-      # turb_tab <- suppressWarnings(read.table(input$file_wf_param$datapath, header=TRUE, sep = ","))  #not needed here?
-      species_conf <- mat.or.vec(length(input$species_input), 1)
-      for(s in 1:length(input$species_input)){
-        species_conf[s] <- read.csv("data/BOEM_XY_species_halfdeg.csv", header = T)[movement_type()[2], input$species_input[s]]
-      }
-      #}
-    }else{
-      species_conf <- mat.or.vec(2, 1)
-    }
-    species_conf
-  })
-
-  # dialog box to check whether the lats and lons from the turbine data are reasonable values
-  observeEvent(input$file_wf_param, {
-    {if(length(which(react_latlon()[1] > 45)) > 0|
-        length(which(react_latlon()[1] < 23)) > 0|
-        length(which(react_latlon()[2] > (-63))) > 0|
-        length(which(react_latlon()[2] < (-83))) > 0){
-      showModal(modalDialog(
-        title = "Check values for Latitude and Longitude",
-        footer = modalButton("OK"),
-        paste("Latitude and/or Longitude are not specified, not the same for different wind farm parameter runs (only one location allowed), or values fall outside the geographic extent of this tool.
-              Please upload appropriate values with turbine data or consult documentation for more information on geographic scope.")
-      ))
-    }}
-  })
-
-  # dialog box to warn user that specified location is in a low confidence area for one or more of the specified species
-  observeEvent(c(input$file_wf_param, input$species_input), {
-    {if(sum(within_conf()) > 0&
-        (length(which(react_latlon()[1] > 45)) < 1&
-         length(which(react_latlon()[1] < 23)) < 1&
-         length(which(react_latlon()[2] > (-63))) < 1&
-         length(which(react_latlon()[2] < (-83))) < 1)
-    ){
-      showModal(modalDialog(
-        title = "Proceed with caution",
-        footer = modalButton("OK"),
-        paste("Specified location is in an area with less confidence for", sep=""),
-        paste(paste(SpeciesLabels[unlist(lapply(1:length(input$species_input[which(within_conf()==1)]), function(x) which(SpeciesLabels[,1]==input$species_input[which(within_conf()==1)][x]))), 2], collapse=", "), ".", sep="", collapse = ", ")
-      ))
-    }}
-  })
-  ##
+  # an object that indexes whether at least one file has been uploaded for both species and turbine data
+  bothdataup <- reactiveVal()
+  bothdataup  <- eventReactive(c(input$"file_spp_param", input$"file_wf_param"), {length(input$file_spp_param$datapath) > 0 & length(input$file_wf_param$datapath) > 0})
 
   # dialog box that alerts the user that some data was uploaded, but not every data type was provided
   observeEvent(c(input$file_spp_param, input$species_input), {
@@ -1185,7 +1058,33 @@ server <- function(input, output, session) {
       ))
     }}
   })
+  
+  # if checks for species or turbine data are triggered, dialog box informs user of which parameters need to be updated
+  observeEvent({req(!is.null(CRM_fun()$TurbineError)|!is.null(CRM_fun()$BirdDataError)|!is.null(CRM_fun()$FHDError)|!is.null(CRM_fun()$CountsError)|!is.null(CRM_fun()$MovementError))}, {
+    showModal(modalDialog(
+      title = "Cannot run CRM",
+      footer = modalButton("OK"),
+      paste("Failed data checks for appropriate values. Please provide appropriate values for ", paste(c(CRM_fun()$TurbineError, CRM_fun()$BirdDataError, CRM_fun()$FHDError, CRM_fun()$CountsError, CRM_fun()$MovementError), collapse=", "), ".", sep="")
+    ))
+  })
+  
+  # dialog box to ensure that the files provided for each species match the species listed in the provided count and species data files
+  observeEvent({req(!is.null(CRM_fun()$SpeciesCheck))}, {
+    showModal(modalDialog(
+      title = "Cannot run CRM because species do not match",
+      footer = modalButton("OK"),
+      paste("Species specified in flight heights or count data do not match the rows of the species data.")
+    ))
+  })
+  
 
+  # Main crm execution code using Promise functions -------------------------
+  
+  # load scripts for the main collision risk computation and the global sensitivity analyses
+  # source("BandModel_function_BRI.R")
+  source("stochCRM_move_function_BRI.R")
+  source("scripts/GSA.R")
+  
   # create reactive objects that will be used in the promise for the main computational script
   interruptor <- AsyncInterruptor$new()
   CRM_fun <- reactiveVal()
@@ -1195,41 +1094,36 @@ server <- function(input, output, session) {
 
   # primary function that called computational script (using a promise)
   observeEvent(input$run, {
+    # browser()
     if(running())
       return(NULL)
     running(TRUE)
     run_times$start <- Sys.time()
     output$run_start_txt <- renderText(paste0("The model run was started at: ", strftime(run_times$start, "%Y-%m-%d %H:%M:%S %Z", tz = "America/New_York")))
-    movement_type2 <- movement_type()
-    speciesreact2 <- speciesreact()
-    radioreact2 <- radioreact()
-    tablereact2 <- tablereact()
-    tablereact4 <- tablereact3()
-    tablereact6 <- tablereact5()
-    tablereact8 <- tablereact7()
-    #tablereact10 <- tablereact9()
-    tablereact12 <- tablereact11()
-    sliderreact2 <- sliderreact()
+
     progress <- AsyncProgress$new(message="Simulating collision risk")
 
-        # Must set seed=T for correct parallel application
+    # Must set seed=T in future function for correct parallel application
     # https://www.r-bloggers.com/2020/09/future-1-19-1-making-sure-proper-random-numbers-are-produced-in-parallel-processing/
+
     CRM_fun(NULL)
     fut <- future({
       stochasticBand(
         results_folder = "results",
-        BirdData = tablereact4,
-        TurbineData = tablereact2,
-        CountData = tablereact8,
-        movement_type = movement_type2,
-        FlightData = tablereact6,
-        iter = sliderreact2,
-        CRSpecies = speciesreact2,
+        BirdData = isolate(species_params()),
+        TurbineData = isolate(wind_farm_params_react()),
+        CountData = isolate(popn_data_react()),
+        # movement_type = isolate(movement_type()),
+        movement_type = isolate(windfarm_loc$cell_sf),
+        FlightData = isolate(spp_flt_ht_react()),
+        iter = isolate(iter_slider_react()),
+        ModelType = isolate(model_input_react()),
+        CRSpecies = isolate(species_input_react()),
         LargeArrayCorrection = "yes",
-        Options_select = radioreact2,
+        Options_select = isolate(crm_option_radio_react()),
         progress = progress,
         interruptor = interruptor,
-        survey_data = tablereact12,
+        survey_data = 0, #movement_provided_react()
         runlocal = FALSE
       )
     }, seed = T)
@@ -1250,43 +1144,121 @@ server <- function(input, output, session) {
       updateTabItems(session, inputId = "tabsetpan", selected = "crm_results")
     })
     NULL
+    
+    #MUTED below -in order to step through CRM_fun you need to mute future promises above and unmute below - you can't step through 
+    #code with future-promises, it doesn't work.
+    
+    # CRM_fun() <- stochasticBand(
+    #   results_folder = "results",
+    #   BirdData = isolate(species_params()),
+    #   TurbineData = isolate(wind_farm_params_react()),
+    #   CountData = isolate(popn_data_react()),
+    #   # movement_type = isolate(movement_type()),
+    #   movement_type = isolate(windfarm_loc$cell_sf),
+    #   FlightData = isolate(spp_flt_ht_react()),
+    #   iter = isolate(iter_slider_react()),
+    #   ModelType = isolate(model_input_react()),
+    #   CRSpecies = isolate(species_input_react()),
+    #   LargeArrayCorrection = "yes",
+    #   Options_select = isolate(crm_option_radio_react()),
+    #   progress = progress,
+    #   interruptor = interruptor,
+    #   survey_data = 0, #movement_provided_react()
+    #   runlocal = FALSE
+    # )
+    # NULL
+  })  #end observeEvent input$run
+
+
+# Render results output tab -----------------------------------------------
+  
+  # return(list(monthCollsnReps_opt1 = monthCollsnReps_opt1, #monthCollsnReps_opt2 = monthCollsnReps_opt2, 
+  #             monthCollsnReps_opt3 = monthCollsnReps_opt3, #monthCollsnReps_opt4 = monthCollsnReps_opt4, 
+  #             #monthCollsnReps_opt5 = monthCollsnReps_opt5, monthCollsnReps_opt6 = monthCollsnReps_opt6,
+  #             dailyCollsnReps_opt1 = dailyCollsnReps_opt1,
+  #             dailyCollsnReps_opt3 = dailyCollsnReps_opt3,
+  #             sampledParamsBird = sampledParamsBird, sampledParamsTurbine = sampledParamsTurbine, 
+  #             Options_select = Options_select, movement.boot.sample_list=movement.boot.sample_list, 
+  #             monthlySpeciesGridCount = monthlySpeciesGridCount, num_birds_WF = num_birds_WF, 
+  #             resultsSummary = resultsSummary, Turbines = TurbineData$TurbineModel, CRSpecies = CRSpecies))
+  
+
+  # rendertext to report the probability of collisions exceeding a user-specified threshold
+  # Divide the total number of collision results exceeding the threshold, divided by the total number of runs
+  prob_exceed_threshold <- eventReactive(CRM_fun(), {
+    num_species <- length(isolate(CRM_fun()[['CRSpecies']]))
+    num_turb_mods <- length(isolate(CRM_fun()[['Turbines']]))
+    prob_threshold_list <- c()
+    n <- 1
+    for(q in 1:num_species) {
+      for(i in 1:num_turb_mods) {
+        threshold_text <- ""
+        if(!is.null(CRM_fun()[['monthCollsnReps']])){
+          #add species and turbine input variable to carry the probabilities for each run through
+          # threshold_text <- length(which(rowSums(CRM_fun()[[paste0("monthCollsnReps_opt", CRM_fun()$Options_select)]][[CRM_fun()[['CRSpecies']][q]]][[i]], na.rm=TRUE) > isolate(input$inputthreshold)))/
+          #   length(rowSums(CRM_fun()[[paste0("monthCollsnReps_opt", CRM_fun()$Options_select)]][[CRM_fun()[['CRSpecies']][q]]][[i]]))
+          threshold_text <- length(which(rowSums(CRM_fun()[['monthCollsnReps']][[CRM_fun()[['CRSpecies']][q]]][[i]], na.rm=TRUE) > isolate(input$inputthreshold)))/
+            length(rowSums(CRM_fun()[['monthCollsnReps']][[CRM_fun()[['CRSpecies']][q]]][[i]]))
+          
+          if(threshold_text == 1){
+            threshold_text <- paste(">", isolate(round(1 - 1/input$iter_slider, log10(input$iter_slider))), sep=" ")
+          }
+          else if(threshold_text == 0){
+            threshold_text <- paste("<", isolate(round(((1/input$iter_slider)), log10(input$iter_slider))), sep=" ")
+          }
+          else {
+            #add some formatting to other probabilities
+            threshold_text <- formatC(threshold_text, digits = 3, format = "fg")
+          }
+          
+          prob_threshold_list[n] <- paste0("Run ", n,": the probability of exceeding specified threshold (", isolate(input$inputthreshold),") is ", threshold_text, ".")
+          n <-  n + 1
+        }
+      }
+    }
+    return(prob_threshold_list)
   })
   
-  # box appears if main function is canceled
-  observeEvent(input$cancel,{
-    if(running())interruptor$interrupt("Canceled")
+  #now render in correct format to output to Shiny with newlines as needed.
+  output$prob_exceed_threshold_msg <- renderUI({
+    HTML(paste(prob_exceed_threshold(), collapse = " <br> "))
   })
-
-  # main plot for annual collisions
-  # ATG - modified to use ggplot instead as it's easier and a lot more sophisticated then base plot
-  # observeEvent(input$run, {output$results_plot <- renderPlot({
+  
+  # after main function is run, but before sensitivity analyses are, create a .csv that alerts the user (will be included in download package if user downloads raw results)
+  observeEvent(input$run,
+               if(!is.null(CRM_fun())){
+                 write.csv("Sensitivity analyses not run", file = paste0(tempdir(), "/", CRM_fun()[['CRSpecies']][1], "_", paste0("turbModel", CRM_fun()[['Turbines']][1]),"_sensitivity.csv"), row.names = FALSE)
+               })
+  
+  # main plot for annual cumulative collision estimation
   results_plots <- eventReactive(CRM_fun(), {
     # browser()
     num_species <- length(CRM_fun()[['CRSpecies']])
     num_turb_mods <- length(CRM_fun()[['Turbines']])
+    
     # spp_by_turbines$num_species <- length(CRM_fun()[['CRSpecies']])
     # spp_by_turbines$num_turb_mods <- length(CRM_fun()[['Turbines']])
     # spp_by_turbines$combos <-  isolate(spp_by_turbines$num_species * spp_by_turbines$num_turb_mods)
-    # browser()
     plot_list = list()
     n = 1
     nbins = 20
     for(q in 1:num_species) {
       for(i in 1:num_turb_mods) {
-        if(!is.null(CRM_fun()$monthCollsnReps_opt1)){
+        if(!is.null(CRM_fun()[['monthCollsnReps']])){
           # ATG - an issue with plots not rendering in dynamic tabs; use local to get output correct
           # https://stackoverflow.com/questions/31993704/storing-ggplot-objects-in-a-list-from-within-loop-in-r
-          plot_list[[n]] <- local({#if(sum(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][q]]][[i]], na.rm=TRUE)>0){
+          plot_list[[n]] <- local({#if(sum(CRM_fun()[[as.numeric(input$crm_option_radio)]][[CRM_fun()[['CRSpecies']][q]]][[i]], na.rm=TRUE)>0){
+            # NA_index <- which(is.na(CRM_fun()[[paste0("monthCollsnReps_opt", CRM_fun()$Options_select)]][[CRM_fun()[['CRSpecies']][q]]][[i]][1,]))
+            # outvector <- round(rowSums(CRM_fun()[[paste0("monthCollsnReps_opt",  CRM_fun()$Options_select)]][[CRM_fun()[['CRSpecies']][q]]][[i]], na.rm = TRUE), digits = 3)
+            NA_index <- which(is.na(CRM_fun()[['monthCollsnReps']][[CRM_fun()[['CRSpecies']][q]]][[i]][1,]))
+            outvector <- round(rowSums(CRM_fun()[['monthCollsnReps']][[CRM_fun()[['CRSpecies']][q]]][[i]], na.rm = TRUE), digits = 3)
             
-            NA_index <- which(is.na(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][q]]][[i]][1,]))
-            outvector <- round(rowSums(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][q]]][[i]], na.rm = TRUE), digits = 3)
-
             xmin <- round(min(outvector, na.rm=TRUE))
             xmax <- round(max(outvector, na.rm=TRUE))
             hist_outvector <- hist(outvector, breaks = nbins, plot = F)
             freq_outvector <- hist_outvector$counts
             bar_outvector <- as.data.frame(cbind(mids=hist_outvector$mids, density=freq_outvector/sum(freq_outvector)))
-
+            
             if (sum(outvector, na.rm=T)==0){
               #no collisions provide a modified figure
               plot_xmin = 0
@@ -1312,9 +1284,9 @@ server <- function(input, output, session) {
             
             #main plot title
             if(length(which(SpeciesLabels[,q] == CRM_fun()[['CRSpecies']][q]))>0){
-              main_label <- paste(SpeciesLabels[SpeciesLabels[,1] == CRM_fun()[['CRSpecies']][q], 2], " (turbine model ", CRM_fun()[['Turbines']][i], ")", sep="")
+              main_label <- paste("Model option", CRM_fun()$Options_select, "for species",SpeciesLabels[SpeciesLabels[,1] == CRM_fun()[['CRSpecies']][q], 2], " (turbine model ", CRM_fun()[['Turbines']][i], ")", sep="")
             }else{
-              main_label <- paste(CRM_fun()[['CRSpecies']][q],  " (turbine model ", CRM_fun()[['Turbines']][i], ")", sep="")
+              main_label <- paste("Model option", CRM_fun()$Options_select, "for species",CRM_fun()[['CRSpecies']][q],  " (turbine model ", CRM_fun()[['Turbines']][i], ")", sep="")
             }
             
             bold <- rep(2, 12)
@@ -1375,61 +1347,11 @@ server <- function(input, output, session) {
                             only bold months are shown in histogram of annual collisions.",
                style = "margin-top: 10px; margin-left: 5px; margin-right: 10px; font-size: 12px; font-style: italic;"))
   
-  #render caption when there are results plots
-  # "Figure 1: A histogram of the number of collisions per year for each iteration.
-  #                           The heights of the bars show the relative frequency of each value.
-  #                           The line shows the smoothed estimate of the shape of the histogram.
-  #                           Months for which movement data were provided or available are shown in bold;
-  #                           only bold months are shown in histogram of annual collisions."
-  
-  # rendertext to report the probability of collisions exceeding a user-specified threshold
-  # Divide the total number of collision results exceeding the threshold, divided by the total number of runs
-  prob_exceed_threshold <- eventReactive(CRM_fun(), {
-    num_species <- length(isolate(CRM_fun()[['CRSpecies']]))
-    num_turb_mods <- length(isolate(CRM_fun()[['Turbines']]))
-    prob_threshold_list <- c()
-    n <- 1
-    for(q in 1:num_species) {
-      for(i in 1:num_turb_mods) {
-        threshold_text <- ""
-        if(!is.null(CRM_fun()$monthCollsnReps_opt1)){
-          #add species and turbine input variable to carry the probabilities for each run through
-          threshold_text <- length(which(rowSums(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][q]]][[i]], na.rm=TRUE) > isolate(input$inputthreshold)))/
-            length(rowSums(CRM_fun()[[as.numeric(input$optionradio)]][[CRM_fun()[['CRSpecies']][q]]][[i]]))
-          if(threshold_text == 1){
-            threshold_text <- paste(">", isolate(round(1 - 1/input$slider1, log10(input$slider1))), sep=" ")
-          }
-          else if(threshold_text == 0){
-            threshold_text <- paste("<", isolate(round(((1/input$slider1)), log10(input$slider1))), sep=" ")
-          }
-          else {
-            #add some formating to other probabilities
-            threshold_text <- formatC(threshold_text, digits = 3, format = "fg")
-          }
-          
-          prob_threshold_list[n] <- paste0("Run ", n,": the probability of exceeding specified threshold (", isolate(input$inputthreshold),") is ", threshold_text, ".")
-          n <-  n + 1
-        }
-      }
-    }
-    return(prob_threshold_list)
-  })
-  output$prob_exceed_threshold_msg <- renderUI({
-    #now render in correct format to output to Shiny with newlines as needed.
-    HTML(paste(prob_exceed_threshold(), collapse = " <br> "))
-  })
-
-  # after main function is run, but before sensitivity analyses are, create a .csv that alerts the user (will be included in download package if user downloads raw results)
-  observeEvent(input$run,
-               if(!is.null(CRM_fun())){
-                 write.csv("Sensitivity analyses not run", file = paste0(tempdir(), "/", CRM_fun()[['CRSpecies']][1], "_", paste0("turbModel", CRM_fun()[['Turbines']][1]),"_sensitivity.csv"), row.names = FALSE)
-                 
-               })
 
   # create a reactive object for the sensitivity analyses
   GSA_fun <- eventReactive(
     input$runGSA, {
-      GSA_approx(CRM_fun(), input$optionradio)
+      GSA_approx(CRM_fun(), input$crm_option_radio)
     })
 
   # write results of sensitivity analysis to .csv (to be downloaded if user chooses)
@@ -1441,109 +1363,28 @@ server <- function(input, output, session) {
     }
   })
 
+  option_labels <- c("Option 1: faster approximation", NA,"Option 3: slower but more precise")
   
-  # update estimated run time when user chooses a new option
-  observeEvent(req(input$optionradio), {output$iter_message <- renderText({
-    if((times*as.numeric(input$slider1))[as.numeric(input$optionradio)] > 90 & (times*as.numeric(input$slider1))[as.numeric(input$optionradio)] <= 3600){
-      time_estimate <- round((times*as.numeric(input$slider1))[as.numeric(input$optionradio)]/60)
-      unit_time <- "minutes"
-    }
-    if((times*as.numeric(input$slider1))[as.numeric(input$optionradio)] > 3600){
-      time_estimate <- round((times*as.numeric(input$slider1))[as.numeric(input$optionradio)]/60/60)
-      unit_time <- "hour(s)"
-    }
-    if((times*as.numeric(input$slider1))[as.numeric(input$optionradio)] <= 90){
-      time_estimate <- (times*as.numeric(input$slider1))[as.numeric(input$optionradio)]
-      unit_time <- "seconds"
-    }
-    paste("~", time_estimate, unit_time, "per wind farm/turbine option")
+  # dialog box for sensitivity analyses
+  observeEvent(input$runGSA, {
+    {showModal(modalDialog(
+      title = "Sensitivity analysis ran successfully",
+      footer = modalButton("OK"),
+      paste("Global sensivity analysis for ", option_labels[as.numeric(input$crm_option_radio)], " ran successfully. Results ready to download.", sep="")
+    ))}
   })
-  })
-
+  
+  
   # print message alerting when main script is run successfully
   observeEvent(input$run, {output$run_success_msg <- renderText({
-    if(!is.null(CRM_fun()$monthCollsnReps_opt1)){
-      isolate(paste(option_labels[as.numeric(input$optionradio)], " ran successfully.", sep=""))
+    if(!is.null(CRM_fun()$monthCollsnReps)){
+      isolate(paste(option_labels[as.numeric(input$crm_option_radio)], " ran successfully.", sep=""))
     }
   })
   })
-
-  # if checks for species or turbine data are triggered, dialog box informs user of which parameters need to be updated
-  observeEvent({req(!is.null(CRM_fun()$TurbineError)|!is.null(CRM_fun()$BirdDataError)|!is.null(CRM_fun()$FHDError)|!is.null(CRM_fun()$CountsError)|!is.null(CRM_fun()$MovementError))}, {
-    showModal(modalDialog(
-      title = "Cannot run CRM",
-      footer = modalButton("OK"),
-      paste("Failed data checks for appropriate values. Please provide appropriate values for ", paste(c(CRM_fun()$TurbineError, CRM_fun()$BirdDataError, CRM_fun()$FHDError, CRM_fun()$CountsError, CRM_fun()$MovementError), collapse=", "), ".", sep="")
-    ))
-  })
-
-  # dialog box to ensure that the files provided for each species match the species listed in the provided count and species data files
-  observeEvent({req(!is.null(CRM_fun()$SpeciesCheck))}, {
-    showModal(modalDialog(
-      title = "Cannot run CRM because species do not match",
-      footer = modalButton("OK"),
-      paste("Species specified in flight heights or count data do not match the rows of the species data.")
-    ))
-  })
-
-
-  # if all conditions are met (conditions dependent on whether user is using baked-in species or uploading their own data) render the "run CRM" button to allow user to run main script
-  # could simplify using bothdataup()
-  observeEvent(c(input$file_wf_param, input$file_spp_param, input$species_input), {
-    if((length(input$file_wf_param$datapath) > 0&length(input$file_spp_param$datapath) > 0&length(input$species_input) > 0&react_latlon()[3]==1)|
-       (length(input$file_wf_param$datapath) > 0&length(input$species_input) > 0&length(which(input$species_input=="Other")) == 0&react_latlon()[3] == 1))
-    # if((length(input$file_wf_param$datapath) > 0&length(input$file_spp_param$datapath) > 0&length(input$species_input) > 0 & nrow(react_latlon())>0)|
-    #    (length(input$file_wf_param$datapath) > 0&length(input$species_input) > 0&length(which(input$species_input=="Other")) == 0 & nrow(react_latlon())>0))
-      {
-      output$runui <- renderUI({
-        div(style="display:inline-block; float:right; padding-right: 10px",
-          actionButton("run", "Run CRM", style = "width: 100px; background-color: green; color: white; font-weight: bold;"),
-          id="uiinput"
-        )
-      })
-    }
-  })
-
-  # if conditions above are no longer met, remove "run CRM" button
-  observeEvent(req((length(input$file_spp_param$datapath) < 3&length(which(input$species_input == "Other")) == 1&!is.null(input$file_spp_param))|
-                     # length(input$species_input) == 0|nrow(react_latlon())==0), {
-                       length(input$species_input) == 0|react_latlon()[3] == 0), {
-                         
-                       removeUI(
-                         selector = "#uiinput"
-                       )
-                     })
-
-  # remove cancel button according to conditions for "run CRM"
-  # observeEvent(req((length(input$file_spp_param$datapath) < 3&length(which(input$species_input=="Other")) == 1&!is.null(input$file_spp_param))|length(input$species_input) == 0|nrow(react_latlon())==0), {
-  observeEvent(req((length(input$file_spp_param$datapath) < 3&length(which(input$species_input=="Other")) == 1&!is.null(input$file_spp_param))|length(input$species_input) == 0|react_latlon()[3] == 0), {
-      
-    removeUI(
-      selector = "#uiinput2"
-    )
-  })
-
-  # render cancel button according to conditions for "run CRM"
-  observeEvent({req((bothdataup()&length(input$species_input) > 0&react_latlon()[3] == 1)|
-                      (length(which(input$species_input == "Other")) == 0&length(input$species_input) > 0&length(input$file_wf_param$datapath) > 0&react_latlon()[3] == 1))}, {
-                        output$cancel <- renderUI({
-                          div(style="display:inline-block; float:left; padding-left: 10px",
-                              actionButton("cancel", "Cancel", style = "width: 100px; background-color: red; color: white; font-weight: bold;"),
-                              id="uiinput2")
-                        })
-                      })
-  
-  # observeEvent({req((bothdataup()&length(input$species_input) > 0&nrow(react_latlon())>0)|
-  #                     (length(which(input$species_input == "Other")) == 0&length(input$species_input) > 0&length(input$file_wf_param$datapath) > 0&nrow(react_latlon())>0))}, {
-  #                       output$cancel <- renderUI({
-  #                         div(actionButton("cancel", "Cancel", style = "margin-left: 20px; margin-top: 0px; background-color: red; color: white; font-weight: bold;"),
-  #                             id="uiinput2")
-  #                       })
-  #                     })
-  
   
   # when results are available, render button for running sensitivity analyses
-  observeEvent({req(!is.null(CRM_fun()$monthCollsnReps_opt1))}, {
+  observeEvent({req(!is.null(CRM_fun()$monthCollsnReps))}, {
     output$runGSA2 <- renderUI({
       actionButton("runGSA", HTML("Run sensitivity <br/> analysis"), 
                    style = "width: 150px; margin-left: 0px; margin-top: 0px; background-color: navy; color: white; font-weight: bold;")
@@ -1551,22 +1392,24 @@ server <- function(input, output, session) {
   })
   
   # when results are available, render button for downloading raw model run data
-  observeEvent({req(!is.null(CRM_fun()$monthCollsnReps_opt1))}, {
+  observeEvent({req(!is.null(CRM_fun()$monthCollsnReps))}, {
     output$download_output <- renderUI({
       downloadButton("downloadDataRaw", HTML("Download model <br/> results"), 
                      style = "width: 150px; margin-left: 0px; margin-top: 0px; background-color: darkkhaki; color: white; font-weight: bold;")
     })
   })
 
-
   # if results are available, render button for generating report
-  observeEvent({req(!is.null(CRM_fun()$monthCollsnReps_opt1))}, {
+  observeEvent({req(!is.null(CRM_fun()$monthCollsnReps))}, {
     output$genreport <- renderUI({
       downloadButton("report", HTML("Generate output <br/> report"), 
                      style = "width: 150px; margin-left: 0px; margin-top: 0px; background-color: darkviolet; color: white; font-weight: bold;")
     })
   })
   
+
+# SCRAM model outputs -----------------------------------------------------
+
   # download handler for report using R Markdown
   output$report <- downloadHandler(
     # for PDF output, change this to "report.pdf"
@@ -1576,14 +1419,14 @@ server <- function(input, output, session) {
       # copy the report file to a temporary directory before processing it, in
       # case we don't have write permissions to the current working dir (which
       # can happen when deployed).
-      tempReport <- file.path(tempdir(), "report_BRI_v2.Rmd")
+      tempReport <- file.path(tempdir(), "report_BRI_v3.Rmd")
       img1 <- file.path(tempdir(), "SCRAM_logo_2_4inch.jpg")
       img2 <- file.path(tempdir(), "BRI_color_logo_no_words.png")
       img3 <- file.path(tempdir(), "URI.png")
       img4 <- file.path(tempdir(), "USFWS.png")
       img5 <- file.path(tempdir(), "BOEM.png")
       
-      file.copy("scripts/report_BRI_v2.Rmd", tempReport, overwrite = TRUE)
+      file.copy("scripts/report_BRI_v3.Rmd", tempReport, overwrite = TRUE)
       # need to copy images to temp dir otherwise can't be found 
       # see: (https://stackoverflow.com/questions/35800883/using-image-in-r-markdown-report-downloaded-from-shiny-app?rq=1)
       file.copy("www/SCRAM_logo_2_4inch.jpg", img1, overwrite = TRUE)
@@ -1593,10 +1436,13 @@ server <- function(input, output, session) {
       file.copy("www/BOEM.png", img5, overwrite = TRUE)
 
       # set up parameters to pass to Rmd document
-      params <- list(SCRAM_version = SCRAM_version, project = input$project_name, modeler = input$modeler, run_start_time = isolate(run_times$start), run_end_time = isolate(run_times$end), 
-                     iterations = input$slider1, model_output = CRM_fun(), threshold = input$inputthreshold, prob_exceed = isolate(prob_exceed_threshold()), 
-                     option = input$optionradio, species_labels = SpeciesLabels, 
-                     species_popn_data = tablereact7()[which(tablereact7()$Species==isolate(input$species_input)),], species_popn_assumptions = spp_count_notes())
+      params <- list(SCRAM_version = SCRAM_version, project = input$project_name, modeler = input$modeler, 
+                     run_start_time = isolate(run_times$start), run_end_time = isolate(run_times$end), 
+                     iterations = input$iter_slider, model_type = isolate(model_input_react()), model_output = isolate(CRM_fun()), 
+                     threshold = input$inputthreshold, prob_exceed = isolate(prob_exceed_threshold()), 
+                     option = input$crm_option_radio, species_labels = SpeciesLabels, 
+                     species_popn_data = popn_data_react()[which(popn_data_react()$Species==isolate(input$species_input)),], 
+                     species_popn_assumptions = spp_popn_notes())
       
       # can't render to PDF - error with latexpdf. Found this solution: 
       # https://stackoverflow.com/questions/66056764/knitr-cannot-find-pdflatex-when-creating-pdf-from-shiny-app
@@ -1629,38 +1475,52 @@ server <- function(input, output, session) {
       content = function(fname) {
         tmpdir = tempdir()
         fnames4zip1 <- list()
-
+        model_type = isolate(model_input_react())
         for(e in 1:length(CRM_fun()[['CRSpecies']])){
           for(w in 1:length(CRM_fun()[['Turbines']])){
             sindex <- CRM_fun()[['CRSpecies']][e]
-            tindex <- paste0("turbModel", CRM_fun()[['Turbines']][w])
-            pred_monthly_coll <- CRM_fun()[[as.numeric(input$optionradio)]][[sindex]][[tindex]]
+            tindex <- paste0("TurbineModel_", CRM_fun()[['Turbines']][w])
+            pred_monthly_coll <- CRM_fun()[["monthCollsnReps"]][[sindex]][[tindex]]
             colnames(pred_monthly_coll) <- paste0("crm_pred_", month.abb)
-            pred_monthly_coll <- cbind(run=1:isolate(sliderreact()), pred_monthly_coll)
+            pred_monthly_coll <- cbind(run=1:isolate(iter_slider_react()), pred_monthly_coll)
             write.csv(pred_monthly_coll, file = paste0(tmpdir, "/SCRAM_crm_pred_monthly_", sindex, "_", tindex,".csv"), row.names = FALSE)
+            pred_daily_coll <- CRM_fun()[["dailyCollsnReps"]][[sindex]][[tindex]]
+            colnames(pred_daily_coll) <- paste0("crm_pred_", month.abb)
+            pred_daily_coll <- cbind(run=1:isolate(iter_slider_react()), pred_daily_coll)
+            write.csv(pred_monthly_coll, file = paste0(tmpdir, "/SCRAM_crm_pred_daily_", sindex, "_", tindex,".csv"), row.names = FALSE)
+            
+            write.csv(popn_data_react()[which(popn_data_react()$Species==sindex),], file = paste0(tmpdir, "/SCRAM_", sindex, "_species_popn_data.csv"), row.names = FALSE)
             write.csv(cbind(CRM_fun()[["sampledParamsTurbine"]][[sindex]][[tindex]],
                             CRM_fun()[["sampledParamsBird"]][[sindex]][[tindex]]), file = paste0(tmpdir, "/SCRAM_", sindex, "_", tindex,"_params.csv"), row.names = FALSE)
-            write.csv(CRM_fun()[["monthlySpeciesGridCount"]][[sindex]], file = paste0(tmpdir, "/SCRAM_", sindex,"_monthly_spp_count_data.csv"), row.names = FALSE)
-            write.csv(tablereact7()[which(tablereact7()$Species==sindex),], file = paste0(tmpdir, "/SCRAM_", sindex, "_species_popn_data.csv"), row.names = FALSE)
+            write.csv(CRM_fun()[["num_birds_cell_perday"]][[sindex]][[tindex]], file = paste0(tmpdir, "/SCRAM_", sindex, "_", tindex,"_num_birds_cell_perday.csv"), row.names = FALSE)
+            write.csv(CRM_fun()[["num_birds_WF_perday"]][[sindex]][[tindex]], file = paste0(tmpdir, "/SCRAM_", sindex, "_", tindex,"_num_birds_WF_perday.csv"), row.names = FALSE)
+            write.csv(CRM_fun()[["movement.boot.sample_list"]][[sindex]], file = paste0(tmpdir, "/SCRAM_", sindex,"_movement.boot.sample.csv"), row.names = FALSE)
+            
             #check below - some of this may be overwritten with the multiple species/turbines types - may need to pull some of this out of the loop
             #add count data by grid as well below
             params <- list(SCRAM_version = SCRAM_version, project = input$project_name, modeler = input$modeler, run_start_time = isolate(run_times$start),  run_end_time = isolate(run_times$end), 
-                           prob_exceed = isolate(prob_exceed_threshold()), iterations = input$slider1, model_output = CRM_fun(), threshold = input$inputthreshold, option = input$optionradio, 
-                           species_labels = SpeciesLabels, species_popn_data = tablereact7()[which(tablereact7()$Species==sindex),], 
-                           species_popn_assumptions = spp_count_notes())
+                           prob_exceed = isolate(prob_exceed_threshold()), iterations = isolate(input$iter_slider), model_type = model_input_react(), model_output = CRM_fun(), threshold = input$inputthreshold, option = input$crm_option_radio, 
+                           species_labels = SpeciesLabels, species_popn_data = popn_data_react()[which(popn_data_react()$Species==sindex),], 
+                           species_popn_assumptions = spp_popn_notes())
             save(params, file = file.path(tmpdir, paste0('SCRAM_model_output_', strftime(isolate(run_times$end), "%Y%m%d_%H%M%S"),'.RData'))) 
             file.copy(input$file_wf_param$datapath, to = file.path(tmpdir, input$file_wf_param$name))
             fnames4zip1 <- c(fnames4zip1, file.path(tmpdir, input$file_wf_param$name))
             
             fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/SCRAM_crm_pred_monthly_", sindex, "_", tindex,".csv"))
+            fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/SCRAM_crm_pred_daily_", sindex, "_", tindex,".csv"))
             fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/SCRAM_", sindex, "_species_popn_data.csv"))
             fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/SCRAM_", sindex, "_", tindex,"_params.csv"))
-            fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/SCRAM_", sindex, "_monthly_spp_count_data.csv"))
+            fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/SCRAM_", sindex, "_", tindex, "_num_birds_cell_perday.csv"))
+            fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/SCRAM_", sindex, "_", tindex, "_num_birds_WF_perday.csv"))
+            fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/SCRAM_", sindex, "_movement.boot.sample.csv"))
             fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/SCRAM_", sindex, "_", tindex,"_sensitivity.csv"))
-            fnames4zip1 <- c(fnames4zip1, paste0("data/SCRAM_", sindex, "_ht_dflt.csv"))
-            fnames4zip1 <- c(fnames4zip1, paste0("data/movements/",sindex, "_movements.zip"))
+            fnames4zip1 <- c(fnames4zip1, paste0("data/", sindex, "_ht_dflt.csv"))
+            if(isolate(input$model_input)=="first"){
+              fnames4zip1 <- c(fnames4zip1, paste0("data/movements/",sindex, "_movements_trunc.zip"))
+            } else {
+              fnames4zip1 <- c(fnames4zip1, paste0("data/movements/",sindex, "_movements_last.zip"))
+            }
             fnames4zip1 <- c(fnames4zip1, file.path(tmpdir, paste0('SCRAM_model_output_', strftime(isolate(run_times$end), "%Y%m%d_%H%M%S"),'.RData')))
-
           }}
         # write.csv(CRM_fun()[["resultsSummary"]], file = paste0(tmpdir, "/SCRAM_results_summary.csv"), row.names = FALSE)
         # fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/SCRAM_results_summary.csv"))
@@ -1676,3 +1536,43 @@ server <- function(input, output, session) {
 
 # Run the application
 shinyApp(ui = ui, server = server)
+
+
+# EXTRA CODE --------------------------------------------------------------
+
+
+# option for user-provided movement files disabled to simplify input
+# tablereact9 <- reactiveValues()
+# tablereact9 <- eventReactive(c(input$species_input), {
+#tablereact9 <- eventReactive(c(input$file_spp_param, input$species_input), {
+#  if(!is.null(input$file_spp_param)){
+#    if(length(which(
+#      sapply(1:length(input$file_spp_param$datapath), function(x) length(suppressWarnings(read.table(input$file_spp_param[[x,"datapath"]], header=TRUE, sep = ","))[1,]))
+#      ==13))>0){
+#      lapply(1:length(which(
+#        sapply(1:length(input$file_spp_param$datapath), function(x) length(suppressWarnings(read.table(input$file_spp_param[[x,"datapath"]], header=TRUE, sep = ","))[1,]))
+#        ==13)),
+#        function(x) suppressWarnings(read.table(
+#          input$file_spp_param[[which(sapply(1:length(input$file_spp_param$datapath),
+#                                    function(x) length(suppressWarnings(read.table(input$file_spp_param[[x,"datapath"]], header=TRUE, sep = ","))[1,]))
+#                             ==13)[x], "datapath"]], header=TRUE, sep = ","))
+#      )
+#    }else{
+#      lapply(1:length(species_input_react()), function(x) read.csv(paste("data/MovementData_", species_input_react()[x],".csv", sep=''), header = T))
+#    }
+#  }else{
+# lapply(1:length(species_input_react()), function(x) read.csv(paste("data/MovementData_", species_input_react()[x],".csv", sep=''), header = T))
+#  }
+# })
+
+
+
+# indicator to let app know whether to use user-provided passage rate data (1) or built-in movement data (0)
+# movement_provided_react <- reactiveValues()
+# movement_provided_react <- eventReactive(c(input$file_spp_param, input$file_wf_param), {
+#   if(!is.null(input$file_spp_param)){
+#     if(length(which(
+#       sapply(1:length(input$file_spp_param$datapath), function(x) length(suppressWarnings(read.table(input$file_spp_param[[x,"datapath"]], header=TRUE, sep = ","))[1,]))
+#       ==25))>0){1}else{0}
+#   }else{0}
+# })
