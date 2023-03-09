@@ -43,31 +43,31 @@
 #'  
 #'  - WFWidth: constant. "width" of wind farm used in Large Array Correction (km)
 #'  
-#'  - Prop_Upwind: constant, ought to be 0-1 bounded as roportion of flights upwind - default of 0.5.
-#'  
 #'  - Latitude: numeric. Decimal latitude.
 #'  
 
 # start of function -------------------------------------------------------
 stochasticBand <- function(
   results_folder = "results", 
-  BirdData, #= tablereact4,
-  TurbineData, #= tablereact2,
-  CountData, #= tablereact8,
-  movement_type, #= movement_type2,
-  FlightData, #= tablereact6,
+  BirdData, 
+  TurbineData, 
+  # WTGSpacing,
+  CountData, 
+  FlightData, 
   iter = 100,
+  ModelCell,
   ModelType,
   CRSpecies,
+  migr_res,
   LargeArrayCorrection = "yes",
-  Options_select, #= radioreact2,
-  progress, #= progress,
-  interruptor, #= interruptor,
+  Latitude,
+  Options_select, 
+  progress, 
+  interruptor, 
   survey_data = 0,
   runlocal = FALSE
   # results_folder = "results", 
-
-) {
+  ) {
   if(length(which(CRSpecies=="Other"))>0){
     CRSpecies <- CountData[, "Species"]
   }else{
@@ -76,7 +76,6 @@ stochasticBand <- function(
   if(!identical(CRSpecies[order(CRSpecies)], unlist(lapply(1:length(FlightData), function(x) FlightData[[x]][1,"Species"]))[order(unlist(lapply(1:length(FlightData), function(x) FlightData[[x]][1,"Species"])))])
      |length(which(CRSpecies[order(CRSpecies)] %in% CountData[,"Species"]==FALSE)) > 0
     ){
-      #return(list(SpeciesCheck = CRSpecies[order(CRSpecies)]))
      return(list(SpeciesCheck = CRSpecies[order(CRSpecies)]))
     }else{
   
@@ -91,6 +90,8 @@ stochasticBand <- function(
   if(length(which(check < length(TurbineData[,1])))>0|length(which(checkBirdData < length(BirdData[,1])))>0|sum(checkFHD) != (2*length(FlightData))|sum(checkCounts) != 2){
     TurbineError <- c("Num_Turbines","TurbineModel", "Num_Blades", "RotorRadius_m", "RotorRadiusSD_m", "HubHeightAdd_m", "HubHeightAddSD_m", "BladeWidth_m", "BladeWidthSD_m", "WindSpeed_mps", "WindSpeedSD_mps", 
                       "Pitch", "PitchSD", "WFWidth_km", "Latitude", "Longitude", "Prop_Upwind")[which(check < length(TurbineData[,1]))]
+    # BirdDataError <- c("Species", "Avoidance", "AvoidanceSD", "Body_Length", "Body_LengthSD", "Wingspan", "WingspanSD", "Flight_Speed", "Flight_SpeedSD", 
+    #                    "Nocturnal_Activity","Nocturnal_ActivitySD","Flight")[which(checkBirdData < length(BirdData[,1]))]
     BirdDataError <- c("Species", "Avoidance", "AvoidanceSD", "Body_Length", "Body_LengthSD", "Wingspan", "WingspanSD", "Flight_Speed", "Flight_SpeedSD", 
                        "Flight")[which(checkBirdData < length(BirdData[,1]))]
     if(sum(checkFHD) < (2*length(FlightData))){
@@ -121,19 +122,19 @@ stochasticBand <- function(
   
   # initialize objects to store simulation replicates of monthly collisions, for each option, for current species and turbine
   monthCollsnReps <- list()
-  # monthCollsnReps_opt3 <- list()
   dailyCollsnReps <- list()
-  # dailyCollsnReps_opt3 <- list()
-  
+
   sampledParamsBird <- list()
   sampledParamsTurbine <- list()
   #set variable to hold daily estimates of birds in WF
   num_birds_WF_perday <- list()
+  num_birds_cell_permonth <- list()
   num_birds_cell_perday <- list()
   movement.boot.sample_list <- list()
   
+  transient_prop_list <- list()
+  
   # num_birds_WF <- list() # data.frame(month.abb)
-
   # read data sources -------------------------------------------------------
   # read in count data for each species, bird biometric data, flight height distributions and turbine characteristics
   #source("scripts/helpers_read data.R", local=T)
@@ -141,11 +142,12 @@ stochasticBand <- function(
   row.names(BirdData) <-  BirdData$Species
   
   # produces a data frame with number of hours daylight and night per month
-  # day length calculations not needed with motus implementation
-  #source("scripts/DayLength.R", local=T) 
+  # day length calculations not needed with motus migrant implementation, but needed for foraging behavior species (ROST)
+  source("scripts/DayLength.R", local=T)
   # when DayLength.R is muted, create the data frame for storing monthly abundance (or "flux") information
   # hours = data.frame(month.abb)
   # names(hours) = c("Month")
+  
   num_birds_WF_permonth = data.frame(month.abb)
   names(num_birds_WF_permonth) = c("Month")
   month_vals <- setNames(1:12, month.abb)
@@ -182,35 +184,24 @@ stochasticBand <- function(
   # Start of the species loop -----------------------------------------------    
   for (s in 1:length(CRSpecies)){
 
-    #if(as.numeric(movement_type[1])==0){
-    #if(is.list(MovementData)){
-    #  MovementSpec <- MovementData[[which(lapply(1:length(CRSpecies), function(x) MovementData[[x]][1, 1])==CRSpecies[s])[1]]]
-    #}else{
-    #  MovementSpec <- MovementData
-    #}
-    #}else{
-      # MovementSpec <- read.csv(paste("data/movements/MovementBaked_", CRSpecies[s], "_", movement_type[2], ".csv", sep=""), header=T)
-  
-    if (ModelType == "first"){
-      # ATG - use Evan's truncated models 
-      # MovementSpec <- read.csv(paste("data/movements/MovementBaked_", CRSpecies[s], "_trunc", movement_type[2], ".csv", sep=""), header=T)
-      # MovementSpec <- read.csv(paste("data/movements/MovementBaked_", CRSpecies[s], "_trunc", movement_type$id, ".csv", sep=""), header=T)
-      #read from zipped file to reduce number of files to upload to R Shiny and handle generally
-      MovementSpec <- read.csv(unz(paste0("data/movements/", CRSpecies[s], "_movements_trunc.zip"), 
-                                            paste0("MovementBaked_", CRSpecies[s], "_trunc", movement_type$id, ".csv")), header=T)
-      
-    } else {
-    #use Evan's last position models
-      # MovementSpec <- read.csv(paste("data/movements/MovementBaked_", CRSpecies[s], "_last", movement_type[2], ".csv", sep=""), header=T)
-      # MovementSpec <- read.csv(paste("data/movements/MovementBaked_", CRSpecies[s], "_last", movement_type$id, ".csv", sep=""), header=T)
-      #read from zipped file to reduce number of files to upload to R Shiny and handle generally
-      MovementSpec <- read.csv(unz(paste0("data/movements/", CRSpecies[s], "_movements_last.zip"), 
-                                            paste0("MovementBaked_", CRSpecies[s], "_last", movement_type$id, ".csv")), header=T)
-      
-    }
-
-    #}
+    # get spp short code
+    spp <- case_match(
+      CRSpecies[s],
+      "Red_Knot" ~ "REKN",
+      "Piping_Plover" ~ "PIPL",
+      "Roseate_Tern" ~ "ROST",
+      "Common_Tern" ~ "COTE"
+    )
     
+    #Load movement model file for the grid cell in which the WF lies
+    #Depends on the species and the model type which varies with migratory status
+    #read from zipped file to reduce number of files to upload to R Shiny and handle generally
+    MovementSpec <- read.csv(unz(paste0("data/movements/", CRSpecies[s], "_movements_", ModelType, ".zip"), 
+                                 paste0("MovementBaked_", CRSpecies[s], "_", ModelType, ModelCell$id, ".csv")), header=T)
+    
+    #Get the proportion of transient state in a model cell to correct for birds that are not transiting a wind farm
+    transient_prop <- ModelCell[[paste0(spp, "_prop_trans")]]
+
     species.dat <- subset(BirdData, Species == CRSpecies[s])
     
     species.dat$FlightNumeric <- ifelse(species.dat$Flight == 'Flapping', 1, 0)
@@ -227,19 +218,13 @@ stochasticBand <- function(
     }
     
     # if(c_densOpt == "reSamp"){
-    #   # cf added option that accomplishes the same goal without 'data.table'
-    #   #species.count <- fread("data/birdDensityData_samples.csv") %>%
-    #   #  filter(specLabel == CRSpecies[s])
-    #   species.count <- read.csv("data/birdDensityData_samples.csv")
-    #   species.count <- species.count[species.count$specLabel == CRSpecies[s], ]
+    #   species.count <- fread("data/birdDensityData_samples.csv") %>%
+    #     filter(specLabel == CRSpecies[s])
     # }
     # 
     # if(c_densOpt == "pcntiles"){
-    #   # cf added option that accomplishes the same goal without 'data.table'
-    #   #species.count <- fread("data/birdDensityData_refPoints.csv") %>%
-    #   #  filter(specLabel == CRSpecies[s])
-    #   species.count <- read.csv("data/birdDensityData_refPoints.csv")
-    #   species.count <- species.count[species.count$specLabel == CRSpecies[s], ]
+    #   species.count <- fread("data/birdDensityData_refPoints.csv") %>%
+    #     filter(specLabel == CRSpecies[s])
     # }
     
     Flap_Glide <- ifelse(species.dat$Flight == "Flapping", 1, 2/pi)
@@ -261,20 +246,22 @@ stochasticBand <- function(
     # create data frame for bird-related parameters
     # sampledBirdParams = data.frame(matrix(data = 0, ncol = 7, nrow = iter))
     # ATG - change 0's no NAs
-    sampledBirdParams = data.frame(matrix(data = NA, ncol = 7, nrow = iter))
-    names(sampledBirdParams) = c("Avoidance", "WingSpan", "BodyLength", "FlightSpeed")
+    sampledBirdParams = data.frame(matrix(data = NA, ncol = 5, nrow = iter))
+    # names(sampledBirdParams) = c("Avoidance", "WingSpan", "BodyLength", "FlightSpeed", "Nocturnal_Activity")
+    names(sampledBirdParams) = c("Avoidance", "WingSpan", "BodyLength", "FlightSpeed", "PropUpwind")
+    
+    
     
     # create data frame for count/density data
-    # sampledSpeciesCount = data.frame(matrix(data = 0, ncol = 12, nrow = iter))
-    sampledSpeciesCount = data.frame(matrix(data = NA, ncol = 12, nrow = iter))
-    # ATG - change 0's no NAs
-    names(sampledSpeciesCount) = month.abb
+    # sampledSpeciesCount = data.frame(matrix(data = NA, ncol = 12, nrow = iter))
+    # names(sampledSpeciesCount) = month.abb
+    
+    bird_dens_sqrkm = data.frame(matrix(data = NA, ncol = 12, nrow = iter))
+    names(bird_dens_sqrkm) = month.abb
     
     #create variable to hold species counts for selected grid
-    num_birds_cell_perday_iters <- sampledSpeciesCount
-    
-    num_birds_WF_perday_iters <- sampledSpeciesCount
-    
+    num_birds_WF_perday_iters <- num_birds_cell_permonth_iters <- num_birds_cell_perday_iters <- bird_flux_perkm <- bird_dens_sqrkm
+
     # create data frame for density data
     # densitySummary=data.frame(matrix(data = 0, ncol = nrow(TurbineData)*3, nrow = iter))
     # ATG - change 0's no NAs
@@ -305,9 +292,8 @@ stochasticBand <- function(
       Option1_Collisions_iter <- data.frame(matrix(data = NA, ncol = 12, nrow = iter))
       # ATG - change 0's to NA
       names(Option1_Collisions_iter) <- month.abb
-      Option3_Collisions_iter <- Option1_Collisions_iter
-      
-      Option1_Collisions_iter_daily <- Option3_Collisions_iter_daily <- Option1_Collisions_iter
+
+      Option1_Collisions_iter_daily <- Option3_Collisions_iter_daily <- Option3_Collisions_iter <- Option1_Collisions_iter
       
       # create objects to store PColl and CollInt 
       # sampledPColl <- data.frame(matrix(data = 0, ncol = 1, nrow = iter))
@@ -373,30 +359,47 @@ stochasticBand <- function(
           source("scripts/ProbabilityCollision.R", local=T)
 
           ############## STEP TWO - Calculate Flux Factor - the number of birds passing a turbine in each month
-          # first calculate turbine frontal area
-          # NTurbines = round (TurbineData$TPower[t] / TurbineData$TurbineModel[t]) ### Number of turbines of given Output required to produce target output
+          ## First calculate turbine frontal area
+          
+          # Model will fork whether a migrant or a resident bird calculating risk using the more traditional flux model for 
+          # resident species that forage offshore and a more simplistic model for when we think there is directed flight with no ability
+          # to collide more than once
+          
+          # NTurbines = round (TPower / TurbineData$TurbineModel[t]) ### Number of turbines of given Output required to produce target output
           # BOEM requested that NTurbines be an input instead of total power
-          # ATG - need to account for each run (differnt parameter runs)
+          # ATG - need to account for each run (different parameter runs)
           NTurbines = TurbineData$Num_Turbines[t]
           
           # ATG - CF changed to a linear function , number of turbines * the rotor diameter - huh? Revert to rotor area
-          # TotalFrontalArea = NTurbines*sampledTurbine$RotorRadius_m[i]*2
-          #ATG - 26 Jan 23 - change to area and see what that does!
-          # TotalFrontalArea = NTurbines * pi * sampledTurbine$RotorRadius[i] ^2
+          # TotalFrontalArea_sqrm = NTurbines*sampledTurbine$RotorRadius_m[i]*2
+          # ATG - 26 Jan 23 - change to area and see what that does!
+          TotalFrontalArea_sqrm = NTurbines * pi * sampledTurbine$RotorRadius_m[i]^2
           
-          # TotalFrontalArea = NTurbines * ((pi * sampledTurbine$RotorRadius[i]^2)/(2*sampledTurbine$RotorRadius[i])) * (currentFlightSpeed *12*3600)
-          TotalFrontalArea = NTurbines * (2 * sampledTurbine$RotorRadius[i]) * (currentFlightSpeed *12*3600)
+          ## estimate wind farm area based on number of turbines and spacing between. WTGSpacing in nmi so must convert to m
+          # TotalWindFarmArea <- NTurbines * (WTGSpacing * 1852) ^ 2
           
+          #### Calculate the total number of birds passing through the wind farm in each month
+          for (h in 1:nrow(hours)) { 
+
+            #Recode to be more clear and follow the r package code. 
+            # convert density to birds/m^2
+            # bird_dens_sqrm <- sampledSpeciesCount[i, h]/1e+06
+            bird_dens_sqrm <- bird_dens_sqrkm[i, h]/1e+06
+            
+            active_secs <- (hours$Day[h] + sampledBirdParams$NocturnalActivity[i] * hours$Night[h]) * 3600
+            
+            hours$Flux[h] = sampledBirdParams$FlightSpeed[i] * (bird_dens_sqrm/(2*sampledTurbine$RotorRadius_m[i])) * TotalFrontalArea_sqrm * active_secs
+            
+          }
           
           # cf added an option that changes the rotor area from circular to square to better model the FHD in individual-based options
-          TotalFrontalAreaProb <- NTurbines*(sampledTurbine$RotorRadius_m[i]*2)^2
+          # TotalFrontalAreaProb <- NTurbines*(sampledTurbine$RotorRadius_m[i]*2)^2
 
           ############## STEP THREE - Calculate Large Array Correction Factor
           # calculate number of turbine rows - manually enter if appropriate
           NTurbRows <- NTurbines ^ 0.5
           
-          #ATG - check MeanOperational[i]/100 code I think it actually might need to be  100^2
-          #also in the original stochastic CRM code there was a difference from how MeanOperational was calculated:
+          # In the original stochastic CRM code there was a difference from how MeanOperational was calculated:
           # Original: MeanOperational = as.numeric(workingOp) - workingVect  (where workingVect is the sampled mean/SD downtime) e.g, 96% - 6% = 90%
           # CollideR: MeanOperational =  workingOp*(100 - workingVect) = 96% monthly operation * (100 - 6% sampled downtime) = 9024%^2
           # However, this code that was directly copied from original to CollideR: MeanOperational[i]/100 results in a proportion 0-1) of operation and 
@@ -407,7 +410,7 @@ stochasticBand <- function(
           # thus should be 0.96 * (1 - 0.06) = 0.9024 or 90.24% operational per month.
           
           CollRiskSinglePassage <- NTurbines * (pi * sampledTurbine$RotorRadius_m[i]^2)/(2 * sampledTurbine$RotorRadius_m[i] * TurbineData$WFWidth_km[t] * 1000) * 
-            (P_Collision/100) * (MeanOperational[i]/100) * (1-sampledBirdParams$Avoidance[i])
+            (P_Collision) * (MeanOperational[i]/100) * (1-sampledBirdParams$Avoidance[i])
           
           #ATG - below seems to be an error in translation of the math from Band 2012 calc of the large 
           # array correction factor. I have confirmed it was an issue at least starting with Masden 2015 code
@@ -426,13 +429,14 @@ stochasticBand <- function(
           #if(length(which(Options_select == 1))>0){
           if(Options_select == '1'){
             # Option 1 ----------------------------------------------------------------
-            #######################	use option 1 - site-specific flight height information	##########################
+            #######################	use option 1 - modeled flight height distribution	##########################
+            ####################### taking account proportion of animals in RSZ ############################
             source("scripts/Option1.R", local=T)
             ## add results to overall species/turbine results table
             Option1_Collisions_iter[i,] = Option1_CollisionRate$monthly_collisions
             
             #store P_Coll
-            sampledPColl[i,] <- P_Collision/100
+            sampledPColl[i,] <- P_Collision
             
             #daily collision rates
             Option1_Collisions_iter_daily[i,] <- Option1_CollisionRate$daily_collisions
@@ -442,7 +446,7 @@ stochasticBand <- function(
           #if(length(which(Options_select == 3))>0){
           if(Options_select == '3'){
             # Option 3 ----------------------------------------------------------------
-            #######################	use option 3 - modelled flight height distribution ###############################
+            #######################	use option 3 - modeled flight height distribution ###############################
             ####################### taking account of variation in risk along the rotor blades #######################
             source("scripts/Option3.R", local=T)
             ## add results to overall species/turbine results table
@@ -462,139 +466,58 @@ stochasticBand <- function(
       source("scripts/turbineSpeciesOutputs.R", local=T)
 
       # store simulation replicates under each option, for current species and turbine  ===========
-      cSpec <- CRSpecies[s]
       cTurbModel <- paste0("turbModel", TurbineData$TurbineModel[t])
       
       if(Options_select == '1'){
-        monthCollsnReps[[cSpec]][[cTurbModel]] <- Option1_Collisions_iter
-        dailyCollsnReps[[cSpec]][[cTurbModel]] <- Option1_Collisions_iter_daily
+        monthCollsnReps[[CRSpecies[s]]][[cTurbModel]] <- Option1_Collisions_iter
+        dailyCollsnReps[[CRSpecies[s]]][[cTurbModel]] <- Option1_Collisions_iter_daily
       }
       if(Options_select == '3'){
-        monthCollsnReps[[cSpec]][[cTurbModel]] <- Option3_Collisions_iter
-        dailyCollsnReps[[cSpec]][[cTurbModel]] <- Option3_Collisions_iter_daily
+        monthCollsnReps[[CRSpecies[s]]][[cTurbModel]] <- Option3_Collisions_iter
+        dailyCollsnReps[[CRSpecies[s]]][[cTurbModel]] <- Option3_Collisions_iter_daily
       }
 
-      sampledParamsBird[[cSpec]][[cTurbModel]] <- sampledBirdParamsIters
-      sampledParamsTurbine[[cSpec]][[cTurbModel]] <- sampledTurbineParamsIters
-      num_birds_cell_perday[[cSpec]][[cTurbModel]] <- num_birds_cell_perday_iters
-      num_birds_WF_perday[[cSpec]][[cTurbModel]] <- num_birds_WF_perday_iters
+      sampledParamsBird[[CRSpecies[s]]][[cTurbModel]] <- sampledBirdParamsIters
+      sampledParamsTurbine[[CRSpecies[s]]][[cTurbModel]] <- sampledTurbineParamsIters
+      num_birds_cell_permonth[[CRSpecies[s]]][[cTurbModel]] <- num_birds_cell_permonth_iters
+      num_birds_cell_perday[[CRSpecies[s]]][[cTurbModel]] <- num_birds_cell_perday_iters
+      num_birds_WF_perday[[CRSpecies[s]]][[cTurbModel]] <- num_birds_WF_perday_iters
 
     } # end of t over number of turbines
     # End of the turbine loop -------------------------------------------------
-    
-    
-    # output species plots of density by option with curves for turbine model
-    # plot density by Option (useful if there several turbine models)
-    #if (nrow(TurbineData)>1){
-    #  source("scripts/species_turbine_plots.R", local = T) 
-    #}
     
     # relabel sampledBirdParams by species name
     assign(paste(CRSpecies[s],"params", sep="_"), sampledBirdParams)
     
     # relabel sampledSpeciesCount by species name
-    assign(paste(CRSpecies[s],"counts", sep="_"), sampledSpeciesCount)
+    # assign(paste(CRSpecies[s],"counts", sep="_"), sampledSpeciesCount)
+    assign(paste(CRSpecies[s],"dens_sqrkm", sep="_"), bird_dens_sqrkm)
+    assign(paste(CRSpecies[s],"flux_perkm", sep="_"), bird_flux_perkm)
     
+    transient_prop_list[[CRSpecies[s]]] <- transient_prop
   } # end of the species loop over s
 
   run.time <- Sys.time() - start.time
-  print(run.time)
+  print(paste("Model runtime:",run.time))
 
   # return inputs and outputs as output for storing, reporting, and graphing ===========
-  return(list(monthCollsnReps = monthCollsnReps, dailyCollsnReps = dailyCollsnReps,
-              sampledParamsBird = sampledParamsBird, sampledParamsTurbine = sampledParamsTurbine, 
-              Options_select = Options_select, movement.boot.sample_list=movement.boot.sample_list, 
-              num_birds_cell_perday = num_birds_cell_perday, num_birds_WF_perday = num_birds_WF_perday, 
-              resultsSummary = resultsSummary, Turbines = TurbineData$TurbineModel, CRSpecies = CRSpecies))
+  return(list(Options_select = Options_select, 
+              Turbines = TurbineData$TurbineModel, 
+              CRSpecies = CRSpecies,
+              transient_corr = transient_prop_list,
+              sampledParamsBird = sampledParamsBird, 
+              sampledParamsTurbine = sampledParamsTurbine, 
+              movement.boot.sample_list=movement.boot.sample_list, 
+              sampledPColl = sampledPColl, 
+              sampledCollInt = sampledCollInt,
+              num_birds_cell_permonth = num_birds_cell_permonth, 
+              num_birds_cell_perday = num_birds_cell_perday, 
+              num_birds_WF_perday = num_birds_WF_perday,
+              monthCollsnReps = monthCollsnReps, 
+              dailyCollsnReps = dailyCollsnReps,
+              resultsSummary = resultsSummary))
   }
   }
 }
-
-
-# EXTRA CODE --------------------------------------------------------------
-# unmute the following 5 lines to set up results folder locally for saving results and run metadata
-# create folders and paths ------------------------------------------------
-# create results folder
-# if(results_folder == "") results_folder <- Sys.Date() ## if no name given for results folder, use today's date
-# if(results_folder !="") dir.create(results_folder) ## if name given for results folder use that and create folder
-
-# make input, figures, and tables folders
-# dir.create(paste(results_folder, "figures", sep="/"))
-# dir.create(paste(results_folder, "tables", sep="/"))
-# dir.create(paste(results_folder, "input", sep="/"))
-# 
-# moved out of first loop to precede day length calculations
-# create data frame for turbine data
-#sampledTurbine <- data.frame(matrix(data = 0, ncol = 23, nrow = iter))
-#names(sampledTurbine) = c("RotorRadius", "HubHeight", "BladeWidth", "WindSpeed", "RotorSpeed", "Pitch", 
-#                          "WFWidth", "Prop_Upwind", "Latitude", "TPower",
-#                          "JanOp", "FebOp", "MarOp", "AprOp", "MayOp", "JunOp", "JulOp",   
-#                          "AugOp", "SepOp", "OctOp", "NovOp", "DecOp")
-
-# original progress bars not used with approach that uses promises
-#updateProgress_Spec,
-#updateProgress_Iter,
-# following progress bar lines not used with implementation that uses promises
-#incProgress(1/(iter*length(CRSpecies)), detail = paste(CRSpecies[s], " (species ", s, " of ", length(CRSpecies), "): ", i/iter*100, "%", sep=""))
-# progress bar update for iterations; not used with implementation that uses promises
-#if (is.function(updateProgress_Spec)) {
-#  text <- gsub("_", " ", CRSpecies[s])
-#  updateProgress_Spec(value = s/(length(CRSpecies)), detail = text)
-#}
-
-# progress bar update for iterations
-#if (is.function(updateProgress_Iter)) {
-#  text <- NULL # paste0("Working through iteration ", i)
-#  updateProgress_Iter(value = i/iter, detail = text)
-#}
-
-##progress bar for iterations##
-
-#setTxtProgressBar(pb, s*t+i)
-#setTxtProgressBar(pb, (s*nrow(TurbineData)-(nrow(TurbineData)-t))*iter-(iter-i))
-# this version of the progress bar not used with implementation that uses promises
-# reset counter of progress bar for iterations =====================
-#if (is.function(updateProgress_Iter)) {
-#  text <- NULL # paste0("Working through iteration ", i)
-#  updateProgress_Iter(value = 0, detail = text)
-#}
-
-# #if(length(which(Options_select == 2))>0){
-# if(Options_select == '2'){
-#   # Option 2 ----------------------------------------------------------------
-#   ####################### use option 2 - modelled flight height distribution		###########################
-#   source("scripts/Option2.R", local=T)
-#   ## add results to overall species/turbine results table
-#   tab2[i,]=Option2_CollisionRate[,2]
-# }
-# #if(length(which(Options_select == 4))>0){
-# if(Options_select == '4'){
-#   # Option 4a ----------------------------------------------------------------
-#   #######################	use option 3 - modelled flight height distribution ###############################
-#   #######################	taking account of variation in risk along the rotor blades #######################
-#   source("scripts/Option4a.R", local=T)
-#   ## add results to overall species/turbine results table
-#   tab4[i,]=Option4a_CollisionRate[,2]  
-# }
-
-# #if(length(which(Options_select == 5))>0){
-# if(Options_select == '5'){
-#   # Option 5 ----------------------------------------------------------------
-#   #######################	do model using option 3 - modelled flight height distribution	############################
-#   #######################	taking account of variation in risk along the rotor blades ###############################
-#   source("scripts/Option5.R", local=T)
-#   ## add results to overall species/turbine results table
-#   tab5[i,]=Option5_CollisionRate[,2] 
-# }
-
-# #if(length(which(Options_select == 6))>0){
-# if(Options_select == '6'){
-#   # Option 6 ----------------------------------------------------------------
-#   #######################	use option 3 - modelled flight height distribution ###############################
-#   #######################	taking account of variation in risk along the rotor blades #######################
-#   source("scripts/Option6.R", local=T)
-#   ## add results to overall species/turbine results table
-#   tab6[i,]=Option6_CollisionRate[,2] 
-# }
 
 

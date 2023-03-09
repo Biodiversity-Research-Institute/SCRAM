@@ -1,6 +1,7 @@
 
 # Minorly modified version from Masden ------------------------------------
 # Modified 22 Feb 2022 by ATG to add turbine units for clarity
+# Mod 14 Feb 23 to change prop upwind from turbine to sampled species parameter
 
 CollisionRiskTab = data.frame(matrix(data = 0, nrow = 21, ncol = 7))
 
@@ -25,7 +26,7 @@ for (u in 1:20) {
 		
 #### First calculate alphas
 
-			CollisionRiskTab$alpha[u + 1] = sampledBirdParams$FlightSpeed[i] * (60/sampledTurbine$RotorSpeed_rpm[i]) /  
+			CollisionRiskTab$alpha[u + 1] = sampledBirdParams$FlightSpeed[i] * (60 / sampledTurbine$RotorSpeed_rpm[i]) /  
 				(CollisionRiskTab$radius[u + 1] * sampledTurbine$RotorRadius_m[i] * 2 * pi)   
 
 # collision risk calculations ---------------------------------------------
@@ -35,53 +36,53 @@ for (u in 1:20) {
 #### Now calculate upwind length
 
 
-			CollisionRiskTab$Up_length[u+1] <- ifelse (CollisionRiskTab$alpha[u + 1] < (sampledBirdParams$BodyLength[i] /sampledBirdParams$WingSpan[i]),
+			CollisionRiskTab$Up_length[u+1] <- ifelse (CollisionRiskTab$alpha[u + 1] < (sampledBirdParams$BodyLength[i] / sampledBirdParams$WingSpan[i]),
 			
 	sampledBirdParams$BodyLength[i] + 	
-		abs(sampledTurbine$BladeWidth_m[i]*CollisionRiskTab$chord[u + 1]*sin(sampledTurbine$Pitch[i])+
-			(CollisionRiskTab$alpha[u + 1] * sampledTurbine$BladeWidth_m[i]*CollisionRiskTab$chord[u + 1]*cos(sampledTurbine$Pitch[i]))),
+		abs(sampledTurbine$BladeWidth_m[i] * CollisionRiskTab$chord[u + 1] * sin(sampledTurbine$Pitch[i]) +
+			(CollisionRiskTab$alpha[u + 1] * sampledTurbine$BladeWidth_m[i] * CollisionRiskTab$chord[u + 1] * cos(sampledTurbine$Pitch[i]))),
 
 	
 	(sampledBirdParams$WingSpan[i] * Flap_Glide * CollisionRiskTab$alpha[u + 1]) + 	
-		abs(sampledTurbine$BladeWidth_m[i]*CollisionRiskTab$chord[u + 1]*sin(sampledTurbine$Pitch[i])+
-			(CollisionRiskTab$alpha[u + 1] * sampledTurbine$BladeWidth_m[i]*CollisionRiskTab$chord[u + 1]*cos(sampledTurbine$Pitch[i]))))
+		abs(sampledTurbine$BladeWidth_m[i] * CollisionRiskTab$chord[u + 1] * sin(sampledTurbine$Pitch[i]) +
+			(CollisionRiskTab$alpha[u + 1] * sampledTurbine$BladeWidth_m[i] * CollisionRiskTab$chord[u + 1] * cos(sampledTurbine$Pitch[i]))))
 
 #### Now calculate upwind probability of collision
 
 			
-	CollisionRiskTab$Up_P[u+1] = min (1, (TurbineData$Num_Blades[t]/(60/sampledTurbine$RotorSpeed_rpm[i])) *
-	                                    CollisionRiskTab$Up_length[u+1]/sampledBirdParams$FlightSpeed[i])
+	CollisionRiskTab$Up_P[u+1] = min (1, (TurbineData$Num_Blades[t] / (60 / sampledTurbine$RotorSpeed_rpm[i])) *
+	                                    CollisionRiskTab$Up_length[u + 1] / sampledBirdParams$FlightSpeed[i])
 
 #### Now calculate downwind length
 
-			ifelse (CollisionRiskTab$alpha[u + 1] < (sampledBirdParams$BodyLength[i] /sampledBirdParams$WingSpan[i]),
+			ifelse (CollisionRiskTab$alpha[u + 1] < (sampledBirdParams$BodyLength[i] / sampledBirdParams$WingSpan[i]),
 			
 			        sampledBirdParams$BodyLength[i] + 	
-		abs(-sampledTurbine$BladeWidth_m[i]*CollisionRiskTab$chord[u + 1]*sin(sampledTurbine$Pitch[i])+
-			(CollisionRiskTab$alpha[u + 1] * sampledTurbine$BladeWidth_m[i]*CollisionRiskTab$chord[u + 1]*cos(sampledTurbine$Pitch[i])))
-						-> CollisionRiskTab$Down_length[u+1],
+		abs(-sampledTurbine$BladeWidth_m[i] * CollisionRiskTab$chord[u + 1] * sin(sampledTurbine$Pitch[i]) +
+			(CollisionRiskTab$alpha[u + 1] * sampledTurbine$BladeWidth_m[i] * CollisionRiskTab$chord[u + 1] * cos(sampledTurbine$Pitch[i])))
+						-> CollisionRiskTab$Down_length[u + 1],
 
 	
 	(sampledBirdParams$WingSpan[i] * Flap_Glide * CollisionRiskTab$alpha[u + 1]) + 	
-		abs(-sampledTurbine$BladeWidth_m[i]*CollisionRiskTab$chord[u + 1]*sin(sampledTurbine$Pitch[i])+
-			(CollisionRiskTab$alpha[u + 1] * sampledTurbine$BladeWidth_m[i]*CollisionRiskTab$chord[u + 1]*cos(sampledTurbine$Pitch[i])))
-						-> CollisionRiskTab$Down_length[u+1])
+		abs(-sampledTurbine$BladeWidth_m[i] * CollisionRiskTab$chord[u + 1] * sin(sampledTurbine$Pitch[i]) +
+			(CollisionRiskTab$alpha[u + 1] * sampledTurbine$BladeWidth_m[i] * CollisionRiskTab$chord[u + 1] * cos(sampledTurbine$Pitch[i])))
+						-> CollisionRiskTab$Down_length[u + 1])
 
 
 #### Now calculate Down wind probability of collision
 
-			
-	CollisionRiskTab$Down_P[u+1] = min (1, (TurbineData$Num_Blades[t]/(60/sampledTurbine$RotorSpeed_rpm[i])) *
-	                                      CollisionRiskTab$Down_length[u+1]/sampledBirdParams$FlightSpeed[i])
-
+	CollisionRiskTab$Down_P[u + 1] = min (1, (TurbineData$Num_Blades[t] / (60 / sampledTurbine$RotorSpeed_rpm[i])) *
+	                                      CollisionRiskTab$Down_length[u + 1] / sampledBirdParams$FlightSpeed[i])
 
 }
 	
 
-Total_Up_Wind_P = 2 * (sum(CollisionRiskTab$radius[2:20] * CollisionRiskTab$Up_P[2:20]) + CollisionRiskTab$Up_P[21]/2) * 0.05
+Total_Up_Wind_P = 2 * (sum(CollisionRiskTab$radius[2:20] * CollisionRiskTab$Up_P[2:20]) + CollisionRiskTab$Up_P[21] / 2) * 0.05
 
-Total_Down_Wind_P = 2 * (sum(CollisionRiskTab$radius[2:20] * CollisionRiskTab$Down_P[2:20]) + CollisionRiskTab$Down_P[21]/2) * 0.05
+Total_Down_Wind_P = 2 * (sum(CollisionRiskTab$radius[2:20] * CollisionRiskTab$Down_P[2:20]) + CollisionRiskTab$Down_P[21] / 2) * 0.05
 
-P_Collision = (TurbineData$Prop_Upwind[t] * Total_Up_Wind_P) + ((1-TurbineData$Prop_Upwind[t]) * Total_Down_Wind_P)
-P_Collision = 100 * P_Collision
+# P_Collision = (TurbineData$Prop_Upwind[t] * Total_Up_Wind_P) + ((1 - TurbineData$Prop_Upwind[t]) * Total_Down_Wind_P)
+P_Collision = (sampledBirdParams$PropUpwind[i] * Total_Up_Wind_P) + ((1 - sampledBirdParams$PropUpwind[i]) * Total_Down_Wind_P)
+
+# P_Collision = 100 * P_Collision
 

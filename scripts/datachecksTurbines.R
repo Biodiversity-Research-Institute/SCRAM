@@ -7,7 +7,7 @@ for(i in 1:length(TurbineData[,1])){
 #   check[1, i] <- 1
 # }
   #change to just a model value or name
-  check[1, i] <- 1
+check[1, i] <- 1
 if(any(TurbineData[i,"Num_Blades"] > 1)&any(TurbineData[i,"Num_Blades"] < 7)){
   check[2, i] <- 1
 }
@@ -47,16 +47,15 @@ if(any(TurbineData[i,"WFWidth_km"] > 1)){
 if(any(TurbineData[i,"Latitude"] > 23)&any(TurbineData[1,"Latitude"] < 55)){
   check[14, i] <- 1
 }
-  check[15, ] <- 1
-  
-if(any(TurbineData[i,"Prop_Upwind"] >= 0)&any(TurbineData[1,"Prop_Upwind"] <= 1)){
-  check[16, i] <- 1
-}
+
+# if(any(TurbineData[i,"Prop_Upwind"] >= 0)&any(TurbineData[1,"Prop_Upwind"] <= 1)){
+#   check[16, i] <- 1
+# }
 # if(any(TurbineData[i,"TPower"] > 0)){
 #   check[17, i] <- 1
 # }
 if(any(TurbineData[i,"Num_Turbines"] > 0)){
-    check[17, i] <- 1
+    check[15, i] <- 1
   }
 }
 check[(length(TurbineData[1,]) - 38):length(TurbineData[1,]), ] <- 1

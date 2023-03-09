@@ -45,21 +45,22 @@ plan(multisession)
 #generate all species data
 data_dir <- "data"
 
-for (species in c("Red_Knot", "Piping_Plover", "Roseate_Tern")){ #, "Common_Tern")){
-  # "Red_Knot_monthly_prob_BOEM_half_deg_trunc.RData"
-  data_layer <-  paste0(species, "_monthly_prob_BOEM_half_deg_trunc")
-  load(file.path(data_dir, paste0(species, "_monthly_prob_BOEM_half_deg_trunc.RData")))
-  assign(data_layer, spp_monthly_prob_BOEM_half_deg)
-  data_layer2 <-  paste0(species, "_monthly_prob_BOEM_half_deg_last")
-  load(file.path(data_dir, paste0(species, "_monthly_prob_BOEM_half_deg_last.RData")))
-  assign(data_layer2, spp_monthly_prob_BOEM_half_deg)
-}
-rm(spp_monthly_prob_BOEM_half_deg)
+#add disclaimer about potentially higher collision risk estimate due to inclusion of land 
+coastal_disclaimer <- "Cells that overlap land have higher collision estimates,\nas passage rate estimates include birds that are on land as well as overwater."
+
+# for (species in c("Red_Knot", "Piping_Plover", "Roseate_Tern")){ #, "Common_Tern")){
+#   # "Red_Knot_monthly_prob_BOEM_half_deg_trunc.RData"
+#   data_layer <-  paste0(species, "_monthly_prob_BOEM_half_deg_trunc")
+#   load(file.path(data_dir, paste0(species, "_monthly_prob_BOEM_half_deg_trunc.RData")))
+#   assign(data_layer, spp_monthly_prob_BOEM_half_deg)
+#   data_layer2 <-  paste0(species, "_monthly_prob_BOEM_half_deg_last")
+#   load(file.path(data_dir, paste0(species, "_monthly_prob_BOEM_half_deg_last.RData")))
+#   assign(data_layer2, spp_monthly_prob_BOEM_half_deg)
+# }
+# rm(spp_monthly_prob_BOEM_half_deg)
 BOEM_lease_outlines <- sf::read_sf("data/BOEMWindLeaseOutlines_6_1_2022.shp") %>% st_transform(3857)
 BOEM_planning_area_outlines <- sf::read_sf("data/BOEMWindPlanningAreas_06_01_2022.shp") %>% st_transform(3857)
 states_sf <- sf::read_sf("data/statesp020.shp") %>% st_transform(3857)
-
-# load(file = file.path(data_dir, "BOEM_halfdeg_grid_sf.RData")) #BOEM_halfdeg_grid_sf
 
 # https://stackoverflow.com/questions/6177629/how-to-silence-the-output-from-this-r-package
 # small function that silences cat() and print() (but not message() or warning()) and returns whatever the expression returned:
@@ -81,3 +82,4 @@ shut_up = function(expr) {
   
   # y
 }
+

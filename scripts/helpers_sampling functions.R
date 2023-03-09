@@ -49,6 +49,11 @@ sampleAvoidance <- function(n, meanavoid, sdavoid){
   rbeta_dmp(n, p = meanavoid, sd = sdavoid)                       
 }
 
+#= Prop_Upwind
+samplePropUpwind <- function(n, meanupwind, sdupwind){
+  rbeta_dmp(n, p = meanupwind, sd = sdupwind)                       
+}
+
 #= Bird counts                          
 # sampleCount <- function(n, meancount, sdcount){
 #   
