@@ -29,7 +29,6 @@ windSpeedRating <- sampleRotnSpeed(iter, TurbineData$WindSpeed_mps[t], TurbineDa
 #ATG - added reference below to record to parameters table
 sampledTurbine$WindSpeed_mps <- windSpeedRating
 
-#TODO - check that this is correct below
 # get rotor speed according to diameter
 # 5.5 is the TSR; 60 is for converting radians/s to rpm
 sampledTurbine$RotorSpeed_rpm <-  (5.5*windSpeedRating*60)/(pi*2*sampledTurbine$RotorRadius_m[i])
@@ -77,7 +76,7 @@ for(currentMonth in month.abb){
   
   #workingOp <- TurbineData %>% select(contains(currentMonth)) %>% select(-contains('SD'), -contains('Mean'))
   workingOp <- TurbineData[t , paste(currentMonth, "Op", sep="")]
-  # browser()
+
   # if we have an SD, then we sample, otherwise just the mean
   #if(!is.na(workingSD[1,1])){
   if(!is.na(workingSD)){

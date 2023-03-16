@@ -25,8 +25,14 @@ for(i in 1:length(BirdData[,1])){
   if(any(BirdData[i,"Flight_SpeedSD"] >= 0)){
     checkBirdData[9, i] <- 1
   }
-  if(any(BirdData[i,"Flight"] == "Flapping")|any(BirdData[i,"Flight"] == "Gliding")){
+  if(any(BirdData[i,"Prop_Upwind"] > 0)){
     checkBirdData[10, i] <- 1
+  }
+  if(any(BirdData[i,"Prop_UpwindSD"] >= 0)){
+    checkBirdData[11, i] <- 1
+  }
+  if(any(BirdData[i,"Flight"] == "Flapping")|any(BirdData[i,"Flight"] == "Gliding")){
+    checkBirdData[12, i] <- 1
   }
 }
 checkBirdData <- rowSums(checkBirdData)
