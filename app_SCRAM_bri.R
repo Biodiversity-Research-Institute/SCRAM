@@ -794,7 +794,7 @@ server <- function(input, output, session) {
     }
     else if (Species=="Red_Knot"){
       return(c("All pass through in spring - #s consistent w/Lyons et al super-population estimate for 2020 in DE Bay: 40,444 (95 perc. credible interval: 33,627–49,966).",
-    "Winter population estimates represent the total # of adults and sub-adults (in general).",
+    "Winter population estimates represent the total # of adults and sub-adults (in general); they do not include hatch-year (HY) birds in the fall.",
     "Southern and northern wintering birds could be present during July - Sept.",
     "Only northern wintering birds could be present during Oct - Nov.",
     "Only southeast US and Caribbean birds could be present during Dec.",
