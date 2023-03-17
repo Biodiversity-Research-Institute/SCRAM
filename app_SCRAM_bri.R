@@ -311,9 +311,6 @@ ui <- dashboardPage(
               # Also move manual to book button
               column(width = 4, 
                      htmlOutput("downloads", style = "margin-top: -14px"),
-                     #        downloadButton("downloadDataX", "Manual",
-                     #                       style = "margin-bottom: 8px; background-color: gray; color: black; font-weight: bold;"),
-                     #        br(),
                      #        downloadButton("downloadSpeciesExample", "Example species input",
                      #                       style = "margin-bottom: 8px; background-color: blue; color: white; font-weight: bold;"),
                      #        br(),
@@ -1516,8 +1513,9 @@ server <- function(input, output, session) {
                            species_popn_assumptions = spp_popn_notes())
             save(params, file = file.path(tmpdir, paste0('SCRAM_model_output_', strftime(isolate(run_times$end), "%Y%m%d_%H%M%S"),'.RData'))) 
             file.copy(input$file_wf_param$datapath, to = file.path(tmpdir, input$file_wf_param$name))
-            fnames4zip1 <- c(fnames4zip1, file.path(tmpdir, input$file_wf_param$name))
             
+            #compress files for uploading
+            fnames4zip1 <- c(fnames4zip1, file.path(tmpdir, input$file_wf_param$name))
             fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/SCRAM_crm_pred_monthly_", sindex, "_", tindex,".csv"))
             fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/SCRAM_crm_pred_daily_", sindex, "_", tindex,".csv"))
             fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/SCRAM_", sindex, "_species_popn_data.csv"))
@@ -1527,19 +1525,13 @@ server <- function(input, output, session) {
             fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/SCRAM_", sindex, "_movement.boot.sample.csv"))
             fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/SCRAM_", sindex, "_", tindex,"_sensitivity.csv"))
             fnames4zip1 <- c(fnames4zip1, paste0("data/", sindex, "_ht_dflt_v2.csv"))
-            # if(isolate(input$model_input)=="first"){
-            #   fnames4zip1 <- c(fnames4zip1, paste0("data/movements/",sindex, "_movements_trunc.zip"))
-            # } else {
-            #   fnames4zip1 <- c(fnames4zip1, paste0("data/movements/",sindex, "_movements_last.zip"))
-            # }
-            fnames4zip1 <- c(fnames4zip1, paste0("data/movements/",sindex, "_movements_", isolate(model_input_react()), ".zip"))
+            fnames4zip1 <- c(fnames4zip1, paste0("data/movements/",sindex, "_movements_", model_type, ".zip"))
             fnames4zip1 <- c(fnames4zip1, file.path(tmpdir, paste0('SCRAM_model_output_', strftime(isolate(run_times$end), "%Y%m%d_%H%M%S"),'.RData')))
           }}
         # write.csv(CRM_fun()[["resultsSummary"]], file = paste0(tmpdir, "/SCRAM_results_summary.csv"), row.names = FALSE)
         # fnames4zip1 <- c(fnames4zip1, paste0(tmpdir, "/SCRAM_results_summary.csv"))
         
         utils::zip(zipfile=fname, files=unlist(c(fnames4zip1)), flags = "-r9Xj")
-        #if(file.exists(paste0(fname, ".zip"))) {file.rename(paste0(fname, ".zip"), fname)}
       },
       contentType = "application/zip"
     )
