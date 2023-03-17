@@ -70,7 +70,7 @@ ui <- dashboardPage(
         icon('fa-solid fa-book', "fa-2x"),
         style = "padding-top: 10px; padding-bottom: 10px",
         target = '_blank',
-        href = "SCRAM_manual_v0911_101722.pdf"),
+        href = "SCRAM_manual_v103_031723.pdf"),
       style = "float: left"
     ),
     tags$li(
