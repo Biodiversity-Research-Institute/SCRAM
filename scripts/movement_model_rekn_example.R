@@ -270,7 +270,7 @@ inits <- list(list(gamma=c(rbeta(1, 2, 1.5), NA), dev=0.5, x=x, D=matrix(c(0, 0,
 data <- list("Xidx","Xidx2", "Yidx", "y", "idx","N") 
 parameters <- c("gamma", "Sigma", "D", "b", "x", "phi")
 MOVE <- jags(data=data, inits=inits, parameters.to.save=parameters, filename,
-             n.chains=nc, n.burnin=n.burnin, n.iter=n.iter+n.burnin, n.thin=nt, DIC=TRUE)
+             n.chains=nc, n.burnin=n.burnin, n.iter=n.iter+n.burnin, n.thin=n.thin, DIC=TRUE)
 MOVE.mcmc <- as.mcmc(MOVE)
 
 save(MOVE, file = 'rekn_2state_2023.RData')
