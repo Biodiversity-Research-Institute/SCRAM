@@ -159,7 +159,7 @@ lon_max <- max(y[,2]) + sd(y[,2])/3
 # number of iterations for the JAGS model
 n.iter <- 20000
 n.burnin <- 10000
-nc <- 3
+nc <- 1
 n.thin <- 5
 
 save.image('rekn_2023.RData')
@@ -265,10 +265,6 @@ if (is.R()){
   filename <- file.path(tempdir(), "MOVE.bug")}
 write.model(MOVE, filename)
 inits <- list(list(gamma=c(rbeta(1, 2, 1.5), NA), dev=0.5, x=x, D=matrix(c(0, 0, 0, 0), 2, 2), sigma_c=array(c(0.1, NA, NA, 0.1, 0.1, NA, NA, 0.1), c(2, 2, 2)), phi=0.1, sd=0.01, #gamma=c(0.5, 0.5), ##sd=0.000001 #remove sd prior when constant
-                   Rho=array(c(NA, NA, 0.01, NA, NA, NA, 0.01, NA), c(2, 2, 2))),
-              list(gamma=c(rbeta(1, 2, 1.5), NA), dev=0.5, x=x, D=matrix(c(0, 0, 0, 0), 2, 2), sigma_c=array(c(0.1, NA, NA, 0.1, 0.1, NA, NA, 0.1), c(2, 2, 2)), phi=0.1, sd=0.01, #gamma=c(0.5, 0.5), ##sd=0.000001 #init on gamma[2] to NA with Error in node gamma[2] Cannot set value of non-variable node
-                   Rho=array(c(NA, NA, 0.01, NA, NA, NA, 0.01, NA), c(2, 2, 2))),
-              list(gamma=c(rbeta(1, 2, 1.5), NA), dev=0.5, x=x, D=matrix(c(0, 0, 0, 0), 2, 2), sigma_c=array(c(0.1, NA, NA, 0.1, 0.1, NA, NA, 0.1), c(2, 2, 2)), phi=0.1, sd=0.01, #gamma=c(0.5, 0.5), ##sd=0.000001
                    Rho=array(c(NA, NA, 0.01, NA, NA, NA, 0.01, NA), c(2, 2, 2))))
 data <- list("Xidx","Xidx2", "Yidx", "y", "idx","N") 
 parameters <- c("gamma", "Sigma", "D", "b", "x", "phi")
