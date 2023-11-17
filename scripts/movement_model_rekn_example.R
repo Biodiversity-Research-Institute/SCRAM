@@ -20,11 +20,12 @@ library(rgeos)
 
 ## read and combine Motus data for Red Knot, Roseate Tern, Common Tern, Piping Plover for movement analyses ######################
 # rekn
-proj_14_2016_rekn_final <- readRDS("data/proj_14_2016_rekn_final.rds")
-proj_15_2016_rekn_final <- readRDS("data/proj_15_2016_rekn_final.rds")
+# proj_14_2016_rekn_final <- readRDS("data/proj_14_2016_rekn_final.rds") #I commented some data sets for testing purposes
+# proj_15_2016_rekn_final <- readRDS("data/proj_15_2016_rekn_final.rds")
 proj_38_2016_rekn_final <- readRDS("data/proj_38_2016_rekn_final.rds")
-proj_88_2016_rekn_final <- readRDS("data/proj_88_2016_rekn_final.rds")
-allindvs <- rbind(proj_14_2016_rekn_final, proj_15_2016_rekn_final, proj_38_2016_rekn_final, proj_88_2016_rekn_final)
+# proj_88_2016_rekn_final <- readRDS("data/proj_88_2016_rekn_final.rds")
+allindvs <- rbind(proj_38_2016_rekn_final)
+# allindvs <- rbind(proj_14_2016_rekn_final, proj_15_2016_rekn_final, proj_38_2016_rekn_final, proj_88_2016_rekn_final)
 # remove the one detection from 2017 so that the filters do not think the earliest detection was in January
 allindvs <- allindvs[-which(as.numeric(substr(allindvs$ts_gmt, 1, 4))==2017), ]
 allindvs <- allindvs[!is.na(allindvs$lat)&!is.na(allindvs$lon), ]
@@ -86,7 +87,7 @@ allindvs_ordered_filtered <- remove_false_pos(allindvs_ordered, 3)
 
 # remove duplicate detections by defining bursts as all detections within a 24-hour period
 source('remove_dup_bursts.R')
-allindvs_ordered_filtered_nodups <- remove_dup_bursts_last(allindvs_ordered_filtered, "day")
+allindvs_ordered_filtered_nodups <- remove_dup_bursts(allindvs_ordered_filtered, "day")
 
 ## create variables for indexing the JAGS movement model (variable terminology as in Baldwin et al. 2018) #############################################
 # create a vector (Sind_obs) that references, for each individual, the position of the vector (for the observed data) that denotes its first detection
@@ -264,7 +265,7 @@ MOVE <- function(){
 if (is.R()){
   filename <- file.path(tempdir(), "MOVE.bug")}
 write.model(MOVE, filename)
-inits <- list(list(gamma=c(rbeta(1, 2, 1.5), NA), dev=0.5, x=x, D=matrix(c(0, 0, 0, 0), 2, 2), sigma_c=array(c(0.1, NA, NA, 0.1, 0.1, NA, NA, 0.1), c(2, 2, 2)), phi=0.1, sd=0.01, #gamma=c(0.5, 0.5), ##sd=0.000001 #remove sd prior when constant
+inits <- list(list(gamma=c(rbeta(1, 2, 1.5), NA), dev=0.5, x=x, D=matrix(c(0, 0, 0, 0), 2, 2), sigma_c=array(c(0.1, NA, NA, 0.1, 0.1, NA, NA, 0.1), c(2, 2, 2)), phi=0.1, sd=0.001, #gamma=c(0.5, 0.5), ##sd=0.000001 #remove sd prior when constant
                    Rho=array(c(NA, NA, 0.01, NA, NA, NA, 0.01, NA), c(2, 2, 2))))
 data <- list("Xidx","Xidx2", "Yidx", "y", "idx","N") 
 parameters <- c("gamma", "Sigma", "D", "b", "x", "phi")
